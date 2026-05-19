@@ -1,0 +1,2372 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>UAI Telemetria — Sistema de Monitoramento Industrial v5.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════ */
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --c1:#00d4ff;--c2:#ff6b00;--c3:#00ff9d;--c4:#ffd600;
+  --c5:#a78bfa;--c6:#fb7185;--c7:#38bdf8;--c8:#34d399;
+  --bg:#070d14;--bg2:#0c1520;--bg3:#111e2a;--bg4:#0a1219;
+  --border:rgba(0,212,255,0.18);--border2:rgba(0,212,255,0.3);
+  --text:#c8e6f5;--dim:#4a6b80;--dim2:#2a4a60;
+}
+html,body{height:100%;background:var(--bg);font-family:'Rajdhani',sans-serif;color:var(--text);font-size:14px;overflow-x:hidden;}
+
+/* ═══════════════════════════════════════════════
+   UTILITÁRIOS
+═══════════════════════════════════════════════ */
+.hidden{display:none!important;}
+.mono{font-family:'Share Tech Mono',monospace;}
+.orb{font-family:'Orbitron',monospace;}
+.pulse{animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes scan{0%{top:-2px}100%{top:100%}}
+@keyframes slideIn{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:none}}
+@keyframes glowPulse{0%,100%{box-shadow:0 0 4px rgba(0,212,255,.3)}50%{box-shadow:0 0 14px rgba(0,212,255,.7)}}
+@keyframes borderGlow{0%,100%{border-color:rgba(0,212,255,.18)}50%{border-color:rgba(0,212,255,.55)}}
+@keyframes blink{0%,100%{opacity:1}49%{opacity:1}50%{opacity:0}99%{opacity:0}}
+@keyframes rotateRing{from{stroke-dashoffset:0}to{stroke-dashoffset:-290}}
+
+/* ═══════════════════════════════════════════════
+   TELA DE BOOT / SPLASH
+═══════════════════════════════════════════════ */
+#bootScreen{
+  position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;z-index:999;
+  font-family:'Share Tech Mono',monospace;
+}
+.boot-logo{margin-bottom:30px;animation:fadeIn .4s ease;}
+.boot-lines{width:380px;max-width:90vw;}
+.boot-line{font-size:11px;color:var(--dim);letter-spacing:1px;margin-bottom:3px;animation:slideIn .3s ease both;}
+.boot-line.ok::after{content:' [OK]';color:var(--c3);}
+.boot-line.warn::after{content:' [WARN]';color:var(--c4);}
+.boot-bar-wrap{width:380px;max-width:90vw;height:3px;background:var(--bg3);border-radius:2px;margin-top:20px;overflow:hidden;}
+.boot-bar{height:100%;background:linear-gradient(90deg,var(--c1),var(--c3));width:0;border-radius:2px;transition:width .1s linear;}
+.boot-pct{color:var(--c1);font-size:11px;margin-top:8px;letter-spacing:2px;}
+
+/* ═══════════════════════════════════════════════
+   TELA DE LOGIN
+═══════════════════════════════════════════════ */
+#loginScreen{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:var(--bg);padding:24px;position:relative;overflow:hidden;
+  animation:fadeIn .6s ease;
+}
+.bg-grid{position:absolute;inset:0;pointer-events:none;opacity:.5;}
+.scan-line{position:absolute;left:0;right:0;height:1px;background:rgba(0,212,255,.1);animation:scan 5s linear infinite;pointer-events:none;}
+.corner{position:absolute;width:44px;height:44px;border-color:var(--c1);border-style:solid;}
+.corner-tl{top:18px;left:18px;border-width:2px 0 0 2px;}
+.corner-tr{top:18px;right:18px;border-width:2px 2px 0 0;}
+.corner-bl{bottom:18px;left:18px;border-width:0 0 2px 2px;}
+.corner-br{bottom:18px;right:18px;border-width:0 2px 2px 0;}
+
+.login-card{
+  background:var(--bg2);border:.5px solid var(--border2);border-radius:12px;
+  padding:40px 44px;width:100%;max-width:460px;position:relative;z-index:2;
+  animation:fadeIn .5s ease;
+}
+
+/* LOGO */
+.logo-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:30px;}
+.logo-icon{width:70px;height:70px;margin-bottom:14px;}
+.brand-name{font-family:'Orbitron',monospace;font-size:26px;font-weight:900;letter-spacing:5px;color:var(--c1);}
+.brand-sub{font-family:'Orbitron',monospace;font-size:12px;font-weight:700;letter-spacing:7px;color:var(--c2);margin-top:3px;}
+.brand-tag{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:2px;margin-top:10px;text-align:center;}
+.brand-ver{font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(0,212,255,.4);letter-spacing:2px;margin-top:4px;}
+
+.divider-line{height:.5px;background:var(--border);margin:0 0 26px;}
+
+/* CAMPOS */
+.field-group{margin-bottom:16px;}
+.field-label{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:2px;margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+.field-label .ico{font-size:14px;color:var(--c1);}
+.field-wrap{position:relative;}
+.f-input{
+  width:100%;background:var(--bg3);border:.5px solid var(--border);border-radius:5px;
+  padding:11px 40px 11px 13px;font-family:'Rajdhani',sans-serif;font-size:15px;
+  color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s;
+}
+.f-input:focus{border-color:var(--c1);box-shadow:0 0 0 2px rgba(0,212,255,.1);}
+.f-input::placeholder{color:var(--dim);font-size:13px;}
+.eye-btn{position:absolute;right:11px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--dim);cursor:pointer;font-size:16px;line-height:1;transition:color .2s;}
+.eye-btn:hover{color:var(--c1);}
+.f-select{
+  width:100%;background:var(--bg3);border:.5px solid var(--border);border-radius:5px;
+  padding:11px 13px;font-family:'Rajdhani',sans-serif;font-size:14px;color:var(--text);
+  outline:none;cursor:pointer;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234a6b80' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;
+  transition:border-color .2s;
+}
+.f-select:focus{border-color:var(--c1);}
+.f-select option{background:var(--bg3);}
+
+.remember-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;}
+.check-wrap{display:flex;align-items:center;gap:7px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);cursor:pointer;letter-spacing:1px;}
+.check-wrap input{accent-color:var(--c1);width:14px;height:14px;cursor:pointer;}
+.forgot-link{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--c1);letter-spacing:1px;cursor:pointer;text-decoration:none;}
+.forgot-link:hover{color:var(--c3);}
+
+.btn-login{
+  width:100%;padding:13px;background:rgba(0,212,255,.1);border:.5px solid var(--c1);
+  border-radius:5px;color:var(--c1);font-family:'Orbitron',monospace;font-size:12px;
+  font-weight:700;letter-spacing:3px;cursor:pointer;transition:background .2s,color .2s,border-color .2s;
+}
+.btn-login:hover{background:rgba(0,212,255,.2);}
+.btn-login:active{transform:scale(.99);}
+.btn-login:disabled{opacity:.7;cursor:not-allowed;}
+
+.btn-demo{
+  width:100%;padding:9px;background:rgba(0,255,157,.05);border:.5px solid rgba(0,255,157,.3);
+  border-radius:5px;color:var(--c3);font-family:'Share Tech Mono',monospace;font-size:10px;
+  letter-spacing:2px;cursor:pointer;transition:background .2s;margin-top:8px;
+}
+.btn-demo:hover{background:rgba(0,255,157,.12);}
+
+.loading-bar{height:2px;background:var(--bg3);border-radius:1px;margin-top:10px;overflow:hidden;}
+.loading-fill{height:100%;background:linear-gradient(90deg,var(--c1),var(--c3));width:0;border-radius:1px;transition:width .1s linear;}
+
+.alert-box{
+  border-radius:4px;padding:9px 12px;font-family:'Share Tech Mono',monospace;
+  font-size:10px;letter-spacing:1px;margin-bottom:14px;
+  display:flex;align-items:center;gap:7px;
+}
+.alert-err{background:rgba(251,113,133,.1);border:.5px solid rgba(251,113,133,.4);color:#fb7185;}
+.alert-ok{background:rgba(0,255,157,.08);border:.5px solid rgba(0,255,157,.35);color:var(--c3);}
+
+.login-footer{display:flex;justify-content:space-between;margin-top:20px;padding-top:14px;border-top:.5px solid var(--border);}
+.sys-stat{display:flex;align-items:center;gap:5px;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);}
+.sdot{width:6px;height:6px;border-radius:50%;}
+
+/* HINT */
+.hint-box{background:var(--bg3);border:.5px solid var(--border);border-radius:4px;padding:8px 12px;margin-top:14px;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);line-height:1.8;}
+.hint-box span{color:var(--c1);}
+
+/* ═══════════════════════════════════════════════
+   TELA DO DASHBOARD
+═══════════════════════════════════════════════ */
+#dashScreen{
+  min-height:100vh;background:var(--bg);display:flex;flex-direction:column;
+  animation:fadeIn .4s ease;
+}
+
+/* TOPBAR */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 16px;background:var(--bg2);border-bottom:.5px solid var(--border);
+  flex-shrink:0;position:sticky;top:0;z-index:100;
+}
+.topbar-left{display:flex;align-items:center;gap:14px;}
+.tb-logo{font-family:'Orbitron',monospace;font-size:14px;font-weight:900;letter-spacing:3px;color:var(--c1);}
+.tb-logo span{color:var(--c2);}
+.tb-badge{font-family:'Share Tech Mono',monospace;font-size:9px;background:rgba(0,212,255,.1);border:.5px solid var(--c1);color:var(--c1);padding:3px 8px;border-radius:3px;}
+.tb-status{font-family:'Share Tech Mono',monospace;font-size:10px;display:flex;align-items:center;gap:5px;color:var(--c3);}
+.topbar-right{display:flex;align-items:center;gap:18px;font-size:11px;color:var(--dim);}
+.tb-info span{color:var(--c1);font-family:'Share Tech Mono',monospace;}
+.tb-clock{font-family:'Orbitron',monospace;font-size:13px;color:var(--c1);}
+.tb-date{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);}
+.btn-logout{background:none;border:.5px solid rgba(251,113,133,.4);color:#fb7185;padding:5px 14px;border-radius:4px;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;transition:background .2s;}
+.btn-logout:hover{background:rgba(251,113,133,.1);}
+
+/* ALERT BANNER */
+.alert-banner{
+  background:rgba(255,214,0,.07);border-bottom:.5px solid rgba(255,214,0,.25);
+  padding:5px 16px;display:flex;align-items:center;gap:10px;
+  font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--c4);letter-spacing:1px;
+  animation:borderGlow 2s infinite;
+}
+.alert-banner-dot{width:6px;height:6px;border-radius:50%;background:var(--c4);animation:blink 1s infinite;}
+
+/* NAV TABS */
+.nav-tabs{display:flex;gap:2px;padding:8px 16px;background:var(--bg4);border-bottom:.5px solid var(--border);}
+.nav-tab{padding:7px 18px;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1.5px;color:var(--dim);cursor:pointer;border-radius:4px;border:.5px solid transparent;transition:all .2s;}
+.nav-tab:hover{color:var(--text);background:var(--bg3);}
+.nav-tab.active{color:var(--c1);border-color:var(--border);background:var(--bg2);}
+.tab-badge{display:inline-block;background:rgba(251,113,133,.2);color:var(--c6);border-radius:10px;padding:0 5px;font-size:8px;margin-left:4px;}
+
+/* MAIN CONTENT */
+.dash-body{flex:1;padding:12px;overflow-y:auto;}
+.page{display:none;}
+.page.active{display:block;animation:fadeIn .3s ease;}
+
+/* ═══════════════ PÁGINA: TEMPO REAL ═══════════════ */
+.rt-grid{display:grid;grid-template-columns:230px 1fr 210px;gap:10px;}
+
+.panel{background:var(--bg2);border:.5px solid var(--border);border-radius:6px;padding:12px;}
+.panel-title{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--dim);margin-bottom:10px;padding-bottom:6px;border-bottom:.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.panel-title-right{color:var(--c1);font-size:9px;}
+
+/* SENSOR GRID */
+.sensor-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;}
+.s-card{background:var(--bg3);border:.5px solid var(--border);border-radius:4px;padding:8px;text-align:center;cursor:pointer;transition:border-color .2s,box-shadow .2s;}
+.s-card:hover{border-color:var(--c1);box-shadow:0 0 8px rgba(0,212,255,.12);}
+.s-card.alert-card{border-color:rgba(255,214,0,.4);animation:borderGlow 2s infinite;}
+.s-val{font-family:'Share Tech Mono',monospace;font-size:16px;font-weight:700;line-height:1;}
+.s-unit{font-size:9px;color:var(--dim);margin-top:2px;letter-spacing:1px;}
+.s-label{font-size:10px;color:var(--dim);margin-top:4px;letter-spacing:.5px;}
+.s-trend{font-size:9px;margin-top:2px;}
+.trend-up{color:var(--c6);}
+.trend-dn{color:var(--c3);}
+.trend-st{color:var(--dim);}
+.col-depth{color:var(--c1);}
+.col-rop{color:var(--c3);}
+.col-rpm{color:var(--c4);}
+.col-torque{color:var(--c2);}
+.col-pres{color:var(--c5);}
+.col-flow{color:var(--c7);}
+.col-vib{color:var(--c6);}
+.col-temp{color:#f97316;}
+.col-wob{color:#e879f9;}
+.col-mud{color:#22d3ee;}
+
+/* GAUGE */
+.gauge-wrap{display:flex;justify-content:center;margin:8px 0;}
+
+/* PROGRESS */
+.prog-wrap{margin:6px 0;}
+.prog-label{display:flex;justify-content:space-between;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);margin-bottom:3px;}
+.prog-track{height:4px;background:rgba(0,0,0,.4);border-radius:2px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:2px;transition:width .8s ease;}
+
+/* CHARTS */
+.chart-section{display:grid;grid-template-rows:auto 1fr auto;gap:10px;}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.chart-box{background:var(--bg2);border:.5px solid var(--border);border-radius:6px;padding:12px;}
+.chart-canvas-wrap{position:relative;height:120px;width:100%;}
+
+/* BOTTOM METRICS */
+.metrics-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.metric-big{background:var(--bg2);border:.5px solid var(--border);border-radius:6px;padding:12px 16px;display:flex;align-items:center;gap:12px;}
+.metric-big .m-icon{font-size:22px;}
+.metric-big .m-val{font-family:'Share Tech Mono',monospace;font-size:18px;font-weight:700;}
+.metric-big .m-lbl{font-size:10px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;}
+
+/* STATUS / PI / ALARMES */
+.status-list{display:flex;flex-direction:column;gap:5px;}
+.status-row{display:flex;align-items:center;justify-content:space-between;font-size:11px;padding:5px 8px;background:var(--bg3);border-radius:3px;border:.5px solid var(--border);}
+.status-row .sl{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:1px;}
+.status-row .sv{font-family:'Share Tech Mono',monospace;font-weight:600;}
+.ok{color:var(--c3)!important;}
+.warn{color:var(--c4)!important;}
+.err{color:var(--c6)!important;}
+
+.pi-row{display:flex;align-items:center;gap:6px;margin:4px 0;}
+.pi-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.pi-lbl{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);flex:1;letter-spacing:1px;}
+.pi-val{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--c1);}
+
+.alarm-list{display:flex;flex-direction:column;gap:5px;}
+.alarm-item{font-size:10px;padding:6px 9px;border-radius:3px;border-left:2px solid;font-family:'Share Tech Mono',monospace;letter-spacing:.5px;line-height:1.4;}
+.a-warn{border-color:var(--c4);background:rgba(255,214,0,.06);color:var(--c4);}
+.a-ok{border-color:var(--c3);background:rgba(0,255,157,.05);color:var(--c3);}
+.a-err{border-color:var(--c6);background:rgba(251,113,133,.07);color:var(--c6);}
+.a-info{border-color:var(--c1);background:rgba(0,212,255,.05);color:var(--c1);}
+
+/* MAPA MINI */
+.map-mini-box{background:var(--bg3);border:.5px solid var(--border);border-radius:4px;padding:8px;margin-top:8px;}
+.coord-row{display:flex;justify-content:space-between;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);margin-top:5px;}
+
+/* MINI SPARKLINE */
+.sparkline-row{display:flex;align-items:center;gap:6px;margin-top:4px;}
+.sparkline-canvas{height:28px;width:80px;}
+
+/* ═══════════════ PÁGINA: GEOLOGIA ═══════════════ */
+.geo-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.geo-profile{background:var(--bg2);border:.5px solid var(--border);border-radius:6px;padding:14px;}
+.lith-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:.5px solid var(--border);}
+.lith-color{width:14px;height:14px;border-radius:2px;flex-shrink:0;}
+.lith-depth{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);min-width:70px;}
+.lith-name{font-size:12px;color:var(--text);}
+.lith-rec{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--c3);margin-left:auto;}
+
+.sample-table{width:100%;border-collapse:collapse;font-size:11px;}
+.sample-table th{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:1px;padding:6px 8px;border-bottom:.5px solid var(--border);text-align:left;}
+.sample-table td{padding:6px 8px;border-bottom:.5px solid rgba(0,212,255,.07);}
+.sample-table tr:hover td{background:rgba(0,212,255,.03);}
+.tag-min{background:rgba(0,212,255,.1);color:var(--c1);border-radius:3px;padding:2px 6px;font-size:9px;font-family:'Share Tech Mono',monospace;}
+.tag-warn{background:rgba(255,214,0,.1);color:var(--c4);border-radius:3px;padding:2px 6px;font-size:9px;font-family:'Share Tech Mono',monospace;}
+.tag-pend{background:rgba(251,113,133,.1);color:var(--c6);border-radius:3px;padding:2px 6px;font-size:9px;font-family:'Share Tech Mono',monospace;}
+
+/* ═══════════════ PÁGINA: MAPA ═══════════════ */
+.map-full-grid{display:grid;grid-template-columns:1fr 280px;gap:12px;}
+.map-canvas{background:var(--bg2);border:.5px solid var(--border);border-radius:6px;padding:14px;}
+.map-svg-big{width:100%;border-radius:4px;}
+.hole-list{display:flex;flex-direction:column;gap:6px;}
+.hole-row{background:var(--bg3);border:.5px solid var(--border);border-radius:4px;padding:8px 10px;cursor:pointer;transition:border-color .2s;}
+.hole-row:hover,.hole-row.active-hole{border-color:var(--c1);}
+.hole-id{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--c1);}
+.hole-meta{font-size:10px;color:var(--dim);margin-top:2px;}
+.hole-prog{margin-top:5px;}
+
+/* ═══════════════ PÁGINA: ALARMES ═══════════════ */
+.alarm-full-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.alarm-full-item{background:var(--bg2);border:.5px solid var(--border);border-left:3px solid;border-radius:6px;padding:12px 14px;}
+.af-warn{border-left-color:var(--c4);}
+.af-ok{border-left-color:var(--c3);}
+.af-err{border-left-color:var(--c6);}
+.af-info{border-left-color:var(--c1);}
+.af-title{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;margin-bottom:4px;}
+.af-desc{font-size:12px;color:var(--dim);line-height:1.5;}
+.af-time{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);margin-top:6px;}
+.af-badge{font-family:'Share Tech Mono',monospace;font-size:9px;padding:2px 7px;border-radius:3px;float:right;}
+.badge-warn{background:rgba(255,214,0,.15);color:var(--c4);}
+.badge-ok{background:rgba(0,255,157,.1);color:var(--c3);}
+.badge-err{background:rgba(251,113,133,.12);color:var(--c6);}
+
+/* ═══════════════ PÁGINA: RELATÓRIOS ═══════════════ */
+.rel-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.rel-card{background:var(--bg2);border:.5px solid var(--border);border-radius:6px;padding:14px;}
+.rel-big-num{font-family:'Share Tech Mono',monospace;font-size:28px;font-weight:700;color:var(--c1);margin:8px 0 4px;}
+.rel-sub{font-size:11px;color:var(--dim);}
+.kpi-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:.5px solid var(--border);font-size:12px;}
+.kpi-row:last-child{border-bottom:none;}
+.kpi-key{color:var(--dim);}
+.kpi-val{font-family:'Share Tech Mono',monospace;color:var(--text);}
+.btn-export{background:rgba(0,212,255,.08);border:.5px solid var(--c1);color:var(--c1);border-radius:4px;padding:8px 18px;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1.5px;cursor:pointer;transition:background .2s;margin-right:8px;margin-top:10px;}
+.btn-export:hover{background:rgba(0,212,255,.18);}
+
+/* ═══════════════ PÁGINA: CONFIGURAÇÕES ═══════════════ */
+.config-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.config-card{background:var(--bg2);border:.5px solid var(--border);border-radius:6px;padding:14px;}
+.cfg-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:.5px solid var(--border);font-size:12px;}
+.cfg-row:last-child{border-bottom:none;}
+.cfg-key{color:var(--dim);font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;}
+.cfg-val{font-family:'Share Tech Mono',monospace;color:var(--c1);font-size:11px;}
+.toggle-wrap{display:flex;align-items:center;gap:8px;}
+.toggle{width:32px;height:16px;background:var(--bg3);border:.5px solid var(--border);border-radius:8px;position:relative;cursor:pointer;transition:background .2s;}
+.toggle.on{background:rgba(0,212,255,.2);border-color:var(--c1);}
+.toggle::after{content:'';position:absolute;width:10px;height:10px;border-radius:50%;background:var(--dim);top:2px;left:2px;transition:all .2s;}
+.toggle.on::after{background:var(--c1);left:18px;}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--dim2);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:var(--dim);}
+
+/* ═══════════════ MANUTENÇÃO CS14 ═══════════════ */
+.maint-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.maint-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.maint-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+@media(max-width:900px){.maint-grid-2,.maint-grid-3,.maint-grid-4{grid-template-columns:1fr;}}
+@media(max-width:1100px){.maint-grid-4{grid-template-columns:1fr 1fr;}}
+
+.maint-kpi{background:var(--bg3);border:.5px solid var(--border);border-radius:5px;padding:12px;text-align:center;}
+.maint-kpi-val{font-family:'Orbitron',monospace;font-size:26px;font-weight:900;color:var(--c1);line-height:1;}
+.maint-kpi-lbl{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:1px;margin-top:4px;}
+.maint-kpi.mk-ok .maint-kpi-val{color:var(--c3);}
+.maint-kpi.mk-warn .maint-kpi-val{color:var(--c4);}
+.maint-kpi.mk-err .maint-kpi-val{color:var(--c6);}
+
+.maint-card{background:var(--bg2);border:.5px solid var(--border);border-radius:6px;padding:14px;margin-bottom:12px;}
+.maint-card-title{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--c1);margin-bottom:12px;padding-bottom:6px;border-bottom:.5px solid var(--border);display:flex;align-items:center;gap:7px;}
+
+.mf-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.mf-row.mf-3{grid-template-columns:1fr 1fr 1fr;}
+.mf-row.mf-1{grid-template-columns:1fr;}
+@media(max-width:600px){.mf-row,.mf-row.mf-3{grid-template-columns:1fr;}}
+.mf-group{display:flex;flex-direction:column;gap:4px;}
+.mf-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:1.5px;}
+.mf-input,.mf-select,.mf-textarea{
+  background:var(--bg3);border:.5px solid var(--border);border-radius:4px;
+  padding:8px 10px;font-family:'Rajdhani',sans-serif;font-size:13px;color:var(--text);
+  outline:none;transition:border-color .2s;width:100%;
+}
+.mf-textarea{resize:vertical;min-height:60px;}
+.mf-input:focus,.mf-select:focus,.mf-textarea:focus{border-color:var(--c1);box-shadow:0 0 0 2px rgba(0,212,255,.07);}
+.mf-select{cursor:pointer;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%234a6b80' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;
+}
+.mf-select option{background:var(--bg3);}
+
+.mbtn{padding:7px 16px;border-radius:4px;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1.5px;border:none;transition:all .2s;}
+.mbtn-p{background:rgba(0,212,255,.1);border:.5px solid var(--c1);color:var(--c1);}
+.mbtn-p:hover{background:rgba(0,212,255,.2);}
+.mbtn-s{background:rgba(0,255,157,.08);border:.5px solid rgba(0,255,157,.4);color:var(--c3);}
+.mbtn-s:hover{background:rgba(0,255,157,.15);}
+.mbtn-d{background:rgba(251,113,133,.08);border:.5px solid rgba(251,113,133,.4);color:var(--c6);}
+.mbtn-d:hover{background:rgba(251,113,133,.15);}
+.mbtn-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px;}
+
+.maint-table{width:100%;border-collapse:collapse;font-size:12px;}
+.maint-table thead tr{border-bottom:.5px solid var(--border2);}
+.maint-table th{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--dim);padding:7px 10px;text-align:left;font-weight:normal;}
+.maint-table td{padding:8px 10px;border-bottom:.5px solid var(--border);vertical-align:top;}
+.maint-table tr:last-child td{border-bottom:none;}
+.maint-table tr:hover td{background:rgba(0,212,255,.03);}
+.tbl-wrap{overflow-x:auto;}
+
+.mbadge{display:inline-block;padding:2px 7px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;}
+.mb-ativa{background:rgba(0,255,157,.12);color:var(--c3);border:.5px solid rgba(0,255,157,.3);}
+.mb-manut{background:rgba(255,214,0,.12);color:var(--c4);border:.5px solid rgba(255,214,0,.3);}
+.mb-sub{background:rgba(251,113,133,.12);color:var(--c6);border:.5px solid rgba(251,113,133,.3);}
+.mb-estoque{background:rgba(0,212,255,.1);color:var(--c1);border:.5px solid var(--border2);}
+.mb-descarte{background:rgba(100,100,100,.2);color:#888;border:.5px solid #555;}
+.mb-calib{background:rgba(167,139,250,.12);color:var(--c5);border:.5px solid rgba(167,139,250,.3);}
+.mb-falha{background:rgba(251,113,133,.12);color:var(--c6);border:.5px solid rgba(251,113,133,.3);}
+.mb-desg{background:rgba(255,214,0,.12);color:var(--c4);border:.5px solid rgba(255,214,0,.3);}
+.mb-prev{background:rgba(0,255,157,.12);color:var(--c3);border:.5px solid rgba(0,255,157,.3);}
+
+.maint-log{border-left:2px solid var(--border2);padding:8px 12px;margin-bottom:10px;background:var(--bg3);border-radius:0 5px 5px 0;animation:slideIn .3s ease;}
+.maint-log.ml-fail{border-left-color:var(--c6);}
+.maint-log.ml-prev{border-left-color:var(--c4);}
+.maint-log.ml-desg{border-left-color:var(--c2);}
+.maint-log-meta{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);margin-bottom:4px;}
+.maint-log-detail{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);line-height:1.7;}
+.maint-log-detail strong{color:var(--c1);}
+
+.notif-full-card{background:var(--bg3);border:.5px solid rgba(255,214,0,.3);border-radius:5px;padding:14px;font-family:'Share Tech Mono',monospace;font-size:9px;line-height:2;margin-bottom:10px;animation:fadeIn .3s ease;}
+.notif-full-card .nfh{color:var(--c4);font-size:10px;letter-spacing:2px;margin-bottom:8px;border-bottom:.5px solid rgba(255,214,0,.2);padding-bottom:6px;}
+.notif-full-card .nfr{display:flex;gap:6px;color:var(--dim);}
+.notif-full-card .nfr span{color:var(--text);}
+
+.maint-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.maint-bar-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);width:120px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.maint-bar-track{flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.maint-bar-fill{height:100%;border-radius:3px;background:var(--c1);transition:width .5s ease;}
+.maint-bar-val{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--c1);width:24px;text-align:right;}
+
+.msearch{position:relative;margin-bottom:10px;}
+.msearch input{width:100%;background:var(--bg3);border:.5px solid var(--border);border-radius:4px;padding:7px 10px 7px 28px;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text);outline:none;}
+.msearch input:focus{border-color:var(--c1);}
+.msearch::before{content:'⌕';position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--dim);font-size:13px;}
+
+/* FLOATING NOTIF */
+#mNotifArea{position:fixed;top:70px;right:16px;z-index:999;width:310px;display:flex;flex-direction:column;gap:8px;}
+.mnotif-card{background:var(--bg2);border:.5px solid rgba(255,214,0,.5);border-radius:5px;padding:12px;font-family:'Share Tech Mono',monospace;font-size:9px;animation:notif 5s ease forwards;line-height:1.8;}
+.mnotif-title{color:var(--c4);font-size:10px;letter-spacing:2px;margin-bottom:7px;}
+.mnotif-row{color:var(--dim);display:flex;gap:5px;}
+.mnotif-row span{color:var(--text);}
+@keyframes notif{0%{opacity:0;transform:translateX(30px)}10%{opacity:1;transform:none}85%{opacity:1}100%{opacity:0;transform:translateX(30px)}}
+
+/* MODAL MANUT */
+#maintModal{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:600;display:flex;align-items:center;justify-content:center;padding:16px;}
+#maintModal.hidden{display:none;}
+#maintModal .mm-box{background:var(--bg2);border:.5px solid var(--border2);border-radius:8px;padding:20px;width:100%;max-width:580px;max-height:88vh;overflow-y:auto;}
+#maintModal .mm-title{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--c1);margin-bottom:14px;}
+#maintModal .mm-close{float:right;background:none;border:none;color:var(--dim);cursor:pointer;font-size:16px;margin-top:-2px;}
+#maintModal .mm-close:hover{color:var(--c6);}
+
+.mempty{text-align:center;padding:32px;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:1px;}
+.mempty-ico{font-size:28px;margin-bottom:8px;opacity:.3;}
+
+/* TOOLTIP */
+.tooltip-wrap{position:relative;}
+.tooltip-wrap:hover .tooltip-box{display:block;}
+.tooltip-box{display:none;position:absolute;bottom:110%;left:50%;transform:translateX(-50%);background:var(--bg3);border:.5px solid var(--border2);border-radius:4px;padding:5px 10px;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text);white-space:nowrap;z-index:200;}
+
+/* RESPONSIVE */
+@media(max-width:1100px){
+  .rt-grid{grid-template-columns:200px 1fr;}
+  .metrics-row{grid-template-columns:repeat(2,1fr);}
+}
+@media(max-width:900px){
+  .rt-grid{grid-template-columns:1fr;}
+  .chart-row{grid-template-columns:1fr;}
+  .geo-grid{grid-template-columns:1fr;}
+  .map-full-grid{grid-template-columns:1fr;}
+  .alarm-full-grid{grid-template-columns:1fr;}
+  .rel-grid{grid-template-columns:1fr;}
+  .config-grid{grid-template-columns:1fr;}
+  .metrics-row{grid-template-columns:1fr 1fr;}
+  .topbar-right .tb-info{display:none;}
+  .login-card{padding:28px 22px;}
+}
+@media(max-width:600px){
+  .nav-tabs{overflow-x:auto;flex-wrap:nowrap;}
+  .nav-tab{white-space:nowrap;flex-shrink:0;}
+  .metrics-row{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- ╔══════════════════════════════════════╗
+     ║         TELA DE BOOT                 ║
+     ╚══════════════════════════════════════╝ -->
+<div id="bootScreen">
+  <div class="boot-logo">
+    <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" width="70" height="70">
+      <polygon points="40,5 75,65 5,65" fill="none" stroke="#00d4ff" stroke-width="2.5" stroke-linejoin="round"/>
+      <polygon points="40,18 65,60 15,60" fill="rgba(0,212,255,0.07)" stroke="rgba(0,212,255,0.25)" stroke-width="1" stroke-linejoin="round"/>
+      <line x1="40" y1="36" x2="40" y2="55" stroke="#ff6b00" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="40" cy="30" r="3.5" fill="#ff6b00"/>
+      <line x1="24" y1="60" x2="56" y2="60" stroke="#00ff9d" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="5" cy="65" r="2.5" fill="rgba(0,212,255,0.5)"/>
+      <circle cx="75" cy="65" r="2.5" fill="rgba(0,212,255,0.5)"/>
+      <circle cx="40" cy="5" r="2.5" fill="#00d4ff"/>
+    </svg>
+    <div style="font-family:'Orbitron',monospace;font-size:22px;font-weight:900;letter-spacing:5px;color:#00d4ff;margin-top:10px;">UAI TELEMETRIA</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#4a6b80;letter-spacing:3px;margin-top:4px;">SISTEMA DE MONITORAMENTO INDUSTRIAL v5.0</div>
+  </div>
+  <div class="boot-lines" id="bootLines"></div>
+  <div class="boot-bar-wrap"><div class="boot-bar" id="bootBar"></div></div>
+  <div class="boot-pct" id="bootPct">0%</div>
+</div>
+
+<!-- ╔══════════════════════════════════════╗
+     ║         TELA DE LOGIN                ║
+     ╚══════════════════════════════════════╝ -->
+<div id="loginScreen" class="hidden">
+  <svg class="bg-grid" viewBox="0 0 900 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <pattern id="g" width="40" height="40" patternUnits="userSpaceOnUse">
+        <path d="M40 0L0 0 0 40" fill="none" stroke="rgba(0,212,255,0.06)" stroke-width=".5"/>
+      </pattern>
+    </defs>
+    <rect width="900" height="700" fill="url(#g)"/>
+    <circle cx="450" cy="350" r="300" fill="none" stroke="rgba(0,212,255,0.04)" stroke-width="1"/>
+    <circle cx="450" cy="350" r="200" fill="none" stroke="rgba(0,212,255,0.04)" stroke-width=".5"/>
+    <circle cx="450" cy="350" r="100" fill="none" stroke="rgba(0,212,255,0.05)" stroke-width=".5"/>
+    <line x1="0" y1="350" x2="900" y2="350" stroke="rgba(0,212,255,0.04)" stroke-width=".5"/>
+    <line x1="450" y1="0" x2="450" y2="700" stroke="rgba(0,212,255,0.04)" stroke-width=".5"/>
+  </svg>
+
+  <div class="scan-line"></div>
+  <div class="corner corner-tl"></div>
+  <div class="corner corner-tr"></div>
+  <div class="corner corner-bl"></div>
+  <div class="corner corner-br"></div>
+
+  <div class="login-card">
+
+    <!-- LOGO -->
+    <div class="logo-wrap">
+      <div class="logo-icon">
+        <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="40,5 75,65 5,65" fill="none" stroke="#00d4ff" stroke-width="2.5" stroke-linejoin="round"/>
+          <polygon points="40,18 65,60 15,60" fill="rgba(0,212,255,0.07)" stroke="rgba(0,212,255,0.25)" stroke-width="1" stroke-linejoin="round"/>
+          <line x1="40" y1="36" x2="40" y2="55" stroke="#ff6b00" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="40" cy="30" r="3.5" fill="#ff6b00"/>
+          <line x1="24" y1="60" x2="56" y2="60" stroke="#00ff9d" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="5" cy="65" r="2.5" fill="rgba(0,212,255,0.5)"/>
+          <circle cx="75" cy="65" r="2.5" fill="rgba(0,212,255,0.5)"/>
+          <circle cx="40" cy="5" r="2.5" fill="#00d4ff"/>
+        </svg>
+      </div>
+      <div class="brand-name">UAI</div>
+      <div class="brand-sub">TELEMETRIA</div>
+      <div class="brand-tag">◈ SISTEMA DE MONITORAMENTO INDUSTRIAL ◈<br/>SONDA ATLAS COPCO CHRISTENSEN CS14</div>
+      <div class="brand-ver">◈ VERSÃO 5.0.1 — BUILD 20250513 ◈</div>
+    </div>
+
+    <div class="divider-line"></div>
+
+    <!-- ALERTAS -->
+    <div id="loginError" class="alert-box alert-err hidden">
+      ⚠&nbsp;<span id="loginErrorText">Erro de acesso.</span>
+    </div>
+    <div id="loginSuccess" class="alert-box alert-ok hidden">
+      ✓&nbsp;Acesso autorizado. Redirecionando...
+    </div>
+
+    <!-- FORMULÁRIO -->
+    <div class="field-group">
+      <div class="field-label">
+        <span class="ico">👤</span>USUÁRIO / LOGIN
+      </div>
+      <div class="field-wrap">
+        <input class="f-input" type="text" id="userInput" placeholder="ex: operador.silva" autocomplete="username"/>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">
+        <span class="ico">🔒</span>SENHA
+      </div>
+      <div class="field-wrap">
+        <input class="f-input" type="password" id="passInput" placeholder="••••••••" autocomplete="current-password"/>
+        <button class="eye-btn" id="eyeBtn" type="button" aria-label="Mostrar/ocultar senha">👁</button>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">
+        <span class="ico">☰</span>PERFIL DE ACESSO
+      </div>
+      <select class="f-select" id="roleSelect">
+        <option value="">Selecione o perfil...</option>
+        <option value="op">Operador de Sonda</option>
+        <option value="geo">Geólogo</option>
+        <option value="sup">Supervisor de Campo</option>
+        <option value="adm">Administrador</option>
+        <option value="eng">Engenheiro de Mina</option>
+      </select>
+    </div>
+
+    <div class="remember-row">
+      <label class="check-wrap">
+        <input type="checkbox" id="rememberMe" checked/>MANTER CONECTADO
+      </label>
+      <a class="forgot-link" href="#">ESQUECI A SENHA</a>
+    </div>
+
+    <button class="btn-login" id="loginBtn" type="button">▶&nbsp;ACESSAR SISTEMA</button>
+    <button class="btn-demo" id="demoBtn" type="button">⚡ ACESSO RÁPIDO DEMONSTRAÇÃO</button>
+    <div class="loading-bar" id="loadingBar" style="display:none;">
+      <div class="loading-fill" id="loadingFill"></div>
+    </div>
+
+    <!-- HINT -->
+    <div class="hint-box">
+      ◈ LOGINS:<br/>
+      <span>operador</span> / <span>1234</span> → Operador de Sonda<br/>
+      <span>admin</span> / <span>admin</span> → qualquer perfil<br/>
+      <span>geolo</span> / <span>1234</span> → Geólogo<br/>
+      <span>engenheiro</span> / <span>eng123</span> → Engenheiro de Mina
+    </div>
+
+    <!-- RODAPÉ STATUS -->
+    <div class="login-footer">
+      <div class="sys-stat">
+        <div class="sdot pulse" style="background:var(--c3);"></div>SERVIDOR ONLINE
+      </div>
+      <div class="sys-stat">
+        <div class="sdot pulse" style="background:var(--c1);animation-delay:.5s"></div>MQTT ATIVO
+      </div>
+      <div class="sys-stat">
+        <div class="sdot pulse" style="background:var(--c4);animation-delay:1s"></div>STARLINK OK
+      </div>
+      <div class="mono" style="font-size:9px;color:var(--dim);">v5.0.1</div>
+    </div>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════╗
+     ║         TELA DO DASHBOARD            ║
+     ╚══════════════════════════════════════╝ -->
+<div id="dashScreen" class="hidden">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <svg width="28" height="28" viewBox="0 0 80 80" fill="none" aria-hidden="true">
+        <polygon points="40,5 75,65 5,65" fill="none" stroke="#00d4ff" stroke-width="2.5" stroke-linejoin="round"/>
+        <line x1="40" y1="36" x2="40" y2="55" stroke="#ff6b00" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="40" cy="30" r="3.5" fill="#ff6b00"/>
+      </svg>
+      <div class="tb-logo">UAI<span>TELEMETRIA</span></div>
+      <div class="tb-badge">ATLAS COPCO CS14</div>
+      <div class="tb-status">
+        <div class="sdot pulse" style="background:var(--c3);width:8px;height:8px;border-radius:50%;"></div>
+        OPERACIONAL
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="tb-info">SONDA: <span>CS14-01</span></div>
+      <div class="tb-info">FURO: <span>FH-2847</span></div>
+      <div class="tb-info">TURNO: <span>A</span></div>
+      <div class="tb-info">OP: <span id="loggedUser">-</span></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:1px;">
+        <div class="tb-clock" id="dashClock">--:--:--</div>
+        <div class="tb-date" id="dashDate">--/--/----</div>
+      </div>
+      <button class="btn-logout" id="logoutBtn">✕ SAIR</button>
+    </div>
+  </div>
+
+  <!-- ALERT BANNER -->
+  <div class="alert-banner">
+    <div class="alert-banner-dot"></div>
+    ⚠ ALERTA ATIVO: FEED SYSTEM — pressão hidráulica em 142 bar (limite: 135 bar). Verificar regulador e filtros. | Sensor: HYD-FEED-01
+  </div>
+
+  <!-- NAV TABS -->
+  <div class="nav-tabs">
+    <div class="nav-tab active" data-page="pageRT">◉ TEMPO REAL</div>
+    <div class="nav-tab" data-page="pageGeo">⇡ GEOLOGIA</div>
+    <div class="nav-tab" data-page="pageMap">✦ MAPA GPS</div>
+    <div class="nav-tab" data-page="pageAlarm">⚠ ALARMES <span class="tab-badge">1</span></div>
+    <div class="nav-tab" data-page="pageRel">📄 RELATÓRIOS</div>
+    <div class="nav-tab" data-page="pageCfg">⚙ CONFIG</div>
+    <div class="nav-tab" data-page="pageMaint">🔧 MANUTENÇÃO</div>
+  </div>
+
+  <!-- BODY -->
+  <div class="dash-body">
+
+    <!-- ═══ PÁGINA: TEMPO REAL ═══ -->
+    <div id="pageRT" class="page active">
+      <div class="rt-grid">
+
+        <!-- COLUNA ESQUERDA: SENSORES -->
+        <div>
+          <div class="panel">
+            <div class="panel-title">◆ SENSORES EM TEMPO REAL <span class="panel-title-right pulse">● AO VIVO</span></div>
+            <div class="sensor-grid">
+              <div class="s-card tooltip-wrap">
+                <div class="s-val col-depth" id="v-depth">248.6</div>
+                <div class="s-unit">METROS</div>
+                <div class="s-label">PROFUNDIDADE</div>
+                <div class="s-trend trend-dn" id="t-depth">▼ +0.03</div>
+                <div class="tooltip-box">Profundidade atual do furo</div>
+              </div>
+              <div class="s-card tooltip-wrap">
+                <div class="s-val col-rop" id="v-rop">1.84</div>
+                <div class="s-unit">M/MIN</div>
+                <div class="s-label">ROP</div>
+                <div class="s-trend trend-st" id="t-rop">— estável</div>
+                <div class="tooltip-box">Taxa de Penetração</div>
+              </div>
+              <div class="s-card tooltip-wrap">
+                <div class="s-val col-rpm" id="v-rpm">720</div>
+                <div class="s-unit">RPM</div>
+                <div class="s-label">ROTAÇÃO</div>
+                <div class="s-trend trend-st" id="t-rpm">— estável</div>
+                <div class="tooltip-box">Rotação da coroa</div>
+              </div>
+              <div class="s-card tooltip-wrap">
+                <div class="s-val col-torque" id="v-torque">184</div>
+                <div class="s-unit">N·M</div>
+                <div class="s-label">TORQUE</div>
+                <div class="s-trend" id="t-torque">— estável</div>
+                <div class="tooltip-box">Torque do eixo de rotação</div>
+              </div>
+              <div class="s-card alert-card tooltip-wrap">
+                <div class="s-val col-pres" id="v-pres">142</div>
+                <div class="s-unit">BAR</div>
+                <div class="s-label">P. HIDRÁULICA</div>
+                <div class="s-trend trend-up">⚠ elevada</div>
+                <div class="tooltip-box">Lim. recomendado: 135 bar</div>
+              </div>
+              <div class="s-card tooltip-wrap">
+                <div class="s-val col-flow" id="v-flow">38.2</div>
+                <div class="s-unit">L/MIN</div>
+                <div class="s-label">VAZÃO ÁGUA</div>
+                <div class="s-trend trend-st" id="t-flow">— estável</div>
+                <div class="tooltip-box">Vazão de fluido de perfuração</div>
+              </div>
+              <div class="s-card tooltip-wrap">
+                <div class="s-val col-vib" id="v-vib">0.42</div>
+                <div class="s-unit">G-RMS</div>
+                <div class="s-label">VIBRAÇÃO</div>
+                <div class="s-trend" id="t-vib">— normal</div>
+                <div class="tooltip-box">Aceleração vibratória RMS</div>
+              </div>
+              <div class="s-card tooltip-wrap">
+                <div class="s-val col-temp" id="v-temp">68</div>
+                <div class="s-unit">°C</div>
+                <div class="s-label">TEMPERATURA</div>
+                <div class="s-trend trend-st" id="t-temp">— normal</div>
+                <div class="tooltip-box">Temperatura do motor diesel</div>
+              </div>
+              <div class="s-card tooltip-wrap">
+                <div class="s-val col-wob" id="v-wob">12.4</div>
+                <div class="s-unit">kN</div>
+                <div class="s-label">WOB</div>
+                <div class="s-trend trend-st" id="t-wob">— estável</div>
+                <div class="tooltip-box">Weight On Bit — peso sobre broca</div>
+              </div>
+              <div class="s-card tooltip-wrap">
+                <div class="s-val col-mud" id="v-mud">1.18</div>
+                <div class="s-unit">G/CM³</div>
+                <div class="s-label">DENS. FLUIDO</div>
+                <div class="s-trend trend-st" id="t-mud">— normal</div>
+                <div class="tooltip-box">Densidade do fluido de perfuração</div>
+              </div>
+            </div>
+
+            <!-- GAUGE AZIMUTE/INCLINAÇÃO -->
+            <div class="gauge-wrap">
+              <svg width="120" height="120" viewBox="0 0 120 120" role="img" aria-label="Azimute e inclinação">
+                <!-- Anel externo -->
+                <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(0,212,255,0.08)" stroke-width="12"/>
+                <!-- Anel progresso azimute -->
+                <circle cx="60" cy="60" r="50" fill="none" stroke="var(--c1)" stroke-width="3"
+                  stroke-dasharray="220 94" stroke-dashoffset="75" stroke-linecap="round"/>
+                <!-- Anel interno -->
+                <circle cx="60" cy="60" r="36" fill="none" stroke="rgba(255,107,0,0.12)" stroke-width="8"/>
+                <circle cx="60" cy="60" r="36" fill="none" stroke="var(--c2)" stroke-width="2"
+                  stroke-dasharray="130 96" stroke-dashoffset="50" stroke-linecap="round"/>
+                <!-- Textos -->
+                <text x="60" y="52" text-anchor="middle" fill="var(--c1)"
+                  font-family="Share Tech Mono,monospace" font-size="13">247°</text>
+                <text x="60" y="62" text-anchor="middle" fill="#4a6b80"
+                  font-family="Share Tech Mono,monospace" font-size="8">AZIMUTE</text>
+                <text x="60" y="77" text-anchor="middle" fill="var(--c2)"
+                  font-family="Share Tech Mono,monospace" font-size="12">-72.4°</text>
+                <text x="60" y="88" text-anchor="middle" fill="#4a6b80"
+                  font-family="Share Tech Mono,monospace" font-size="8">INCLINAÇÃO</text>
+              </svg>
+            </div>
+
+            <!-- BARRAS DE PROGRESSO -->
+            <div class="prog-wrap">
+              <div class="prog-label"><span>PROGRESSO DO FURO</span><span id="pct-depth">66%</span></div>
+              <div class="prog-track"><div class="prog-fill" id="bar-depth" style="width:66%;background:var(--c1);"></div></div>
+            </div>
+            <div class="prog-wrap">
+              <div class="prog-label"><span>EFICIÊNCIA DO TURNO</span><span id="pct-eff">81%</span></div>
+              <div class="prog-track"><div class="prog-fill" id="bar-eff" style="width:81%;background:var(--c3);"></div></div>
+            </div>
+            <div class="prog-wrap">
+              <div class="prog-label"><span>NÍVEL DE COMBUSTÍVEL</span><span id="pct-fuel">54%</span></div>
+              <div class="prog-track"><div class="prog-fill" id="bar-fuel" style="width:54%;background:var(--c4);"></div></div>
+            </div>
+            <div class="prog-wrap">
+              <div class="prog-label"><span>DESGASTE DA COROA</span><span id="pct-bit">38%</span></div>
+              <div class="prog-track"><div class="prog-fill" id="bar-bit" style="width:38%;background:var(--c6);"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- COLUNA CENTRO: GRÁFICOS -->
+        <div class="chart-section">
+          <div class="chart-row">
+            <div class="chart-box">
+              <div class="panel-title">◆ ROP — TAXA DE PENETRAÇÃO (M/MIN)</div>
+              <div class="chart-canvas-wrap">
+                <canvas id="ropChart" role="img" aria-label="Gráfico de taxa de penetração"></canvas>
+              </div>
+            </div>
+            <div class="chart-box">
+              <div class="panel-title">◆ TORQUE (N·M) / RPM</div>
+              <div class="chart-canvas-wrap">
+                <canvas id="trqChart" role="img" aria-label="Gráfico de torque e RPM"></canvas>
+              </div>
+              <div style="display:flex;gap:14px;margin-top:5px;">
+                <div style="display:flex;align-items:center;gap:4px;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--c2);">
+                  <div style="width:16px;height:2px;background:var(--c2);border-radius:1px;"></div>TORQUE
+                </div>
+                <div style="display:flex;align-items:center;gap:4px;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--c4);">
+                  <div style="width:16px;height:2px;background:var(--c4);border-radius:1px;border-top: 1px dashed var(--c4);"></div>RPM
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="chart-row">
+            <div class="chart-box">
+              <div class="panel-title">◆ PRESSÃO HIDRÁULICA (BAR) <span style="color:var(--c4);">⚠ 135 bar lim.</span></div>
+              <div class="chart-canvas-wrap">
+                <canvas id="presChart" role="img" aria-label="Gráfico de pressão hidráulica"></canvas>
+              </div>
+            </div>
+            <div class="chart-box">
+              <div class="panel-title">◆ VIBRAÇÃO (G-RMS)</div>
+              <div class="chart-canvas-wrap">
+                <canvas id="vibChart" role="img" aria-label="Gráfico de vibração"></canvas>
+              </div>
+            </div>
+          </div>
+          <!-- MÉTRICAS GRANDES -->
+          <div class="metrics-row">
+            <div class="metric-big">
+              <div class="m-icon" style="color:var(--c1);">⏱</div>
+              <div>
+                <div class="m-val" id="v-hours" style="color:var(--c1);">6h 42m</div>
+                <div class="m-lbl">horas operacionais</div>
+              </div>
+            </div>
+            <div class="metric-big">
+              <div class="m-icon" style="color:var(--c4);">⚙</div>
+              <div>
+                <div class="m-val" id="v-fuel-l" style="color:var(--c4);">187 L</div>
+                <div class="m-lbl">combustível usado</div>
+              </div>
+            </div>
+            <div class="metric-big">
+              <div class="m-icon" style="color:var(--c3);">⬆</div>
+              <div>
+                <div class="m-val" id="v-mprod" style="color:var(--c3);">28.4 m</div>
+                <div class="m-lbl">metros / turno</div>
+              </div>
+            </div>
+            <div class="metric-big">
+              <div class="m-icon" style="color:var(--c5);">💎</div>
+              <div>
+                <div class="m-val" id="v-samples" style="color:var(--c5);">9</div>
+                <div class="m-lbl">amostras coletadas</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- COLUNA DIREITA: STATUS + PI + ALARMES -->
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <!-- STATUS -->
+          <div class="panel">
+            <div class="panel-title">◆ STATUS OPERACIONAL</div>
+            <div class="status-list">
+              <div class="status-row"><span class="sl">MOTOR DIESEL</span><span class="sv ok">NORMAL</span></div>
+              <div class="status-row"><span class="sl">BOMBA HID.</span><span class="sv ok">NORMAL</span></div>
+              <div class="status-row"><span class="sl">ROTAÇÃO</span><span class="sv ok">NORMAL</span></div>
+              <div class="status-row"><span class="sl">FEED SYSTEM</span><span class="sv warn">ATENÇÃO</span></div>
+              <div class="status-row"><span class="sl">REFRIGERAÇÃO</span><span class="sv ok">NORMAL</span></div>
+              <div class="status-row"><span class="sl">MODBUS RTU</span><span class="sv ok">ONLINE</span></div>
+              <div class="status-row"><span class="sl">GPS RTK</span><span class="sv ok">FIX 3D</span></div>
+              <div class="status-row"><span class="sl">STARLINK</span><span class="sv ok">ONLINE</span></div>
+              <div class="status-row"><span class="sl">MQTT BROKER</span><span class="sv ok">ATIVO</span></div>
+              <div class="status-row"><span class="sl">COROA HQ3</span><span class="sv ok">38% DESGASTE</span></div>
+            </div>
+          </div>
+
+          <!-- RASPBERRY PI -->
+          <div class="panel">
+            <div class="panel-title">◆ RASPBERRY Pi 4B — DAQ</div>
+            <div class="pi-row"><div class="pi-dot" style="background:var(--c3);"></div><span class="pi-lbl">CPU USAGE</span><span class="pi-val" id="pi-cpu">34%</span></div>
+            <div class="pi-row"><div class="pi-dot" style="background:var(--c1);"></div><span class="pi-lbl">RAM (4 GB)</span><span class="pi-val">61% / 2.4G</span></div>
+            <div class="pi-row"><div class="pi-dot" style="background:var(--c4);"></div><span class="pi-lbl">TEMP. CPU</span><span class="pi-val">52°C</span></div>
+            <div class="pi-row"><div class="pi-dot" style="background:var(--c3);"></div><span class="pi-lbl">MQTT</span><span class="pi-val">ATIVO 500ms</span></div>
+            <div class="pi-row"><div class="pi-dot" style="background:var(--c3);"></div><span class="pi-lbl">GPIO ATIVOS</span><span class="pi-val">16/24</span></div>
+            <div class="pi-row"><div class="pi-dot" style="background:var(--c1);"></div><span class="pi-lbl">RS485/MODBUS</span><span class="pi-val">9600 bd</span></div>
+            <div class="pi-row"><div class="pi-dot" style="background:var(--c3);"></div><span class="pi-lbl">LATÊNCIA</span><span class="pi-val" id="pi-lat">12 ms</span></div>
+            <div class="pi-row"><div class="pi-dot" style="background:var(--c3);"></div><span class="pi-lbl">BUFFER DAQ</span><span class="pi-val">OK / 0 DROP</span></div>
+            <div class="pi-row"><div class="pi-dot" style="background:var(--c3);"></div><span class="pi-lbl">ARMAZEN.</span><span class="pi-val">28% / 64GB</span></div>
+            <div class="pi-row"><div class="pi-dot" style="background:var(--c3);"></div><span class="pi-lbl">UPTIME</span><span class="pi-val" id="pi-uptime">12d 4h</span></div>
+          </div>
+
+          <!-- ALARMES MINI -->
+          <div class="panel" style="flex:1;">
+            <div class="panel-title">◆ ALARMES RECENTES</div>
+            <div class="alarm-list" id="alarmListMini">
+              <div class="alarm-item a-warn">⚠ FEED: pressão elevada (142 bar)</div>
+              <div class="alarm-item a-ok">✓ Sistema operando normalmente</div>
+              <div class="alarm-item a-ok">✓ GPS RTK — precisão 8 mm</div>
+              <div class="alarm-item a-ok">✓ Telemetria Starlink ativa</div>
+              <div class="alarm-item a-ok" id="alarm-sync">✓ Último sync: 00:00:00</div>
+            </div>
+            <!-- MAPA MINI -->
+            <div class="map-mini-box">
+              <div class="mono" style="font-size:9px;color:var(--dim);margin-bottom:6px;">◆ LOCALIZAÇÃO GPS — FURO FH-2847</div>
+              <svg viewBox="0 0 200 90" style="width:100%;border-radius:3px;" role="img" aria-label="Mapa de localização">
+                <rect width="200" height="90" fill="#0a1520" rx="3"/>
+                <line x1="0" y1="22" x2="200" y2="22" stroke="rgba(0,212,255,0.07)" stroke-width=".5"/>
+                <line x1="0" y1="45" x2="200" y2="45" stroke="rgba(0,212,255,0.07)" stroke-width=".5"/>
+                <line x1="0" y1="67" x2="200" y2="67" stroke="rgba(0,212,255,0.07)" stroke-width=".5"/>
+                <line x1="50" y1="0" x2="50" y2="90" stroke="rgba(0,212,255,0.07)" stroke-width=".5"/>
+                <line x1="100" y1="0" x2="100" y2="90" stroke="rgba(0,212,255,0.07)" stroke-width=".5"/>
+                <line x1="150" y1="0" x2="150" y2="90" stroke="rgba(0,212,255,0.07)" stroke-width=".5"/>
+                <ellipse cx="70" cy="40" rx="25" ry="16" fill="rgba(0,100,60,0.22)" stroke="rgba(0,200,100,0.18)" stroke-width=".5"/>
+                <ellipse cx="145" cy="58" rx="20" ry="13" fill="rgba(0,80,50,0.18)" stroke="rgba(0,200,100,0.12)" stroke-width=".5"/>
+                <circle cx="55" cy="32" r="3" fill="none" stroke="rgba(0,212,255,0.4)" stroke-width="1"/>
+                <circle cx="90" cy="52" r="3" fill="none" stroke="rgba(0,212,255,0.4)" stroke-width="1"/>
+                <circle cx="120" cy="34" r="3" fill="none" stroke="rgba(0,212,255,0.4)" stroke-width="1"/>
+                <circle cx="105" cy="44" r="7" fill="none" stroke="#00d4ff" stroke-width="1.5" opacity=".6"/>
+                <circle cx="105" cy="44" r="3" fill="#00d4ff"/>
+                <circle cx="105" cy="44" r="11" fill="none" stroke="rgba(0,212,255,0.2)" stroke-width="1"/>
+                <line x1="105" y1="44" x2="105" y2="82" stroke="rgba(0,212,255,0.5)" stroke-width="1" stroke-dasharray="3,2"/>
+                <text x="105" y="88" text-anchor="middle" fill="#00d4ff" font-family="Share Tech Mono,monospace" font-size="7">FH-2847</text>
+              </svg>
+              <div class="coord-row">
+                <span>E: 623847</span><span>N: 7892134</span><span>ALT: 842m</span>
+              </div>
+              <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);margin-top:4px;display:flex;justify-content:space-between;">
+                <span>PREC: ±8mm</span><span>SAT: 14</span><span>HDOP: 0.8</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- fim pageRT -->
+
+    <!-- ═══ PÁGINA: GEOLOGIA ═══ -->
+    <div id="pageGeo" class="page">
+      <div class="geo-grid">
+        <!-- PERFIL LITOLÓGICO -->
+        <div class="panel">
+          <div class="panel-title">◆ PERFIL LITOLÓGICO — FURO FH-2847</div>
+          <div class="lith-row">
+            <div class="lith-color" style="background:#b45309;"></div>
+            <div class="lith-depth">0 – 12 m</div>
+            <div class="lith-name">Solo / Laterita</div>
+            <div class="lith-rec">92%</div>
+          </div>
+          <div class="lith-row">
+            <div class="lith-color" style="background:#92400e;"></div>
+            <div class="lith-depth">12 – 48 m</div>
+            <div class="lith-name">Itabirito Friável</div>
+            <div class="lith-rec">85%</div>
+          </div>
+          <div class="lith-row">
+            <div class="lith-color" style="background:#1e40af;"></div>
+            <div class="lith-depth">48 – 95 m</div>
+            <div class="lith-name">Quartzito</div>
+            <div class="lith-rec">98%</div>
+          </div>
+          <div class="lith-row">
+            <div class="lith-color" style="background:#7f1d1d;"></div>
+            <div class="lith-depth">95 – 160 m</div>
+            <div class="lith-name">Hematita Compacta ★</div>
+            <div class="lith-rec col-rop">96%</div>
+          </div>
+          <div class="lith-row">
+            <div class="lith-color" style="background:#4c1d95;"></div>
+            <div class="lith-depth">160 – 210 m</div>
+            <div class="lith-name">Filito / Xisto</div>
+            <div class="lith-rec">78%</div>
+          </div>
+          <div class="lith-row">
+            <div class="lith-color" style="background:#991b1b;"></div>
+            <div class="lith-depth">210 – 248 m</div>
+            <div class="lith-name">Hematita Especular ★★</div>
+            <div class="lith-rec col-rop">94%</div>
+          </div>
+          <div class="lith-row" style="border:none;">
+            <div class="lith-color" style="background:var(--dim2);border:.5px dashed var(--dim);"></div>
+            <div class="lith-depth">248 m →</div>
+            <div class="lith-name" style="color:var(--dim);">Em perfuração...</div>
+            <div class="lith-rec" style="color:var(--dim);">—</div>
+          </div>
+          <div style="margin-top:12px;padding-top:10px;border-top:.5px solid var(--border);">
+            <div class="pi-row"><span class="pi-lbl">RECUPERAÇÃO MÉDIA</span><span class="pi-val col-rop">90.5%</span></div>
+            <div class="pi-row"><span class="pi-lbl">ZONAS MINERALIZADAS</span><span class="pi-val col-depth">2 zonas</span></div>
+            <div class="pi-row"><span class="pi-lbl">TEOR Fe ESTIMADO</span><span class="pi-val col-torque">63.8%</span></div>
+            <div class="pi-row"><span class="pi-lbl">DIÂMETRO FURO</span><span class="pi-val">NQ — 47.6 mm</span></div>
+            <div class="pi-row"><span class="pi-lbl">INCLINAÇÃO</span><span class="pi-val">-72.4°</span></div>
+            <div class="pi-row"><span class="pi-lbl">AZIMUTE</span><span class="pi-val">247°</span></div>
+            <div class="pi-row"><span class="pi-lbl">INÍCIO</span><span class="pi-val">10/05/2025</span></div>
+            <div class="pi-row"><span class="pi-lbl">PROF. ALVO</span><span class="pi-val">375.0 m</span></div>
+          </div>
+        </div>
+
+        <!-- AMOSTRAS -->
+        <div class="panel">
+          <div class="panel-title">◆ CADASTRO DE AMOSTRAS — FH-2847</div>
+          <table class="sample-table">
+            <thead>
+              <tr>
+                <th>AMOSTRA</th>
+                <th>PROF. (m)</th>
+                <th>TIPO</th>
+                <th>TEOR Fe</th>
+                <th>Al₂O₃</th>
+                <th>SiO₂</th>
+                <th>STATUS</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>AM-001</td><td>10–12</td><td>Laterita</td><td>28%</td><td>8.2%</td><td>12.1%</td><td><span class="tag-warn">ANÁLISE</span></td></tr>
+              <tr><td>AM-002</td><td>48–52</td><td>Quartzito</td><td>12%</td><td>2.1%</td><td>42.8%</td><td><span class="tag-warn">ANÁLISE</span></td></tr>
+              <tr><td>AM-003</td><td>95–100</td><td>Hematita</td><td>62%</td><td>1.4%</td><td>4.8%</td><td><span class="tag-min">APROVADA</span></td></tr>
+              <tr><td>AM-004</td><td>110–115</td><td>Hematita</td><td>65%</td><td>0.9%</td><td>3.2%</td><td><span class="tag-min">APROVADA</span></td></tr>
+              <tr><td>AM-005</td><td>130–135</td><td>Hematita</td><td>67%</td><td>0.7%</td><td>2.9%</td><td><span class="tag-min">APROVADA</span></td></tr>
+              <tr><td>AM-006</td><td>160–165</td><td>Filito</td><td>18%</td><td>14.3%</td><td>38.7%</td><td><span class="tag-warn">ANÁLISE</span></td></tr>
+              <tr><td>AM-007</td><td>210–215</td><td>Hem. Esp.</td><td>68%</td><td>0.6%</td><td>2.1%</td><td><span class="tag-min">APROVADA</span></td></tr>
+              <tr><td>AM-008</td><td>230–235</td><td>Hem. Esp.</td><td>70%</td><td>0.5%</td><td>1.8%</td><td><span class="tag-min">APROVADA</span></td></tr>
+              <tr><td>AM-009</td><td>245–248</td><td>Em análise</td><td>—</td><td>—</td><td>—</td><td><span class="tag-pend">PENDENTE</span></td></tr>
+            </tbody>
+          </table>
+          <div style="margin-top:12px;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);line-height:1.8;">
+            ★ ZONAS RICAS: 95–160 m (Fe ≈65%) &nbsp;|&nbsp; 210–248 m (Fe ≈69%)<br/>
+            ◈ 5 amostras aprovadas para minério &nbsp;|&nbsp; Fe mín. exigido: 55%
+          </div>
+        </div>
+
+        <!-- GRÁFICO TEOR -->
+        <div class="panel">
+          <div class="panel-title">◆ TEOR Fe (%) POR PROFUNDIDADE</div>
+          <div style="position:relative;height:300px;width:100%;">
+            <canvas id="geoChart" role="img" aria-label="Teor de ferro por profundidade"></canvas>
+          </div>
+          <div style="margin-top:14px;">
+            <div class="pi-row"><span class="pi-lbl">Fe MÉDIO GERAL</span><span class="pi-val col-torque">46.7%</span></div>
+            <div class="pi-row"><span class="pi-lbl">Fe MÉDIO ZONAS RICAS</span><span class="pi-val col-rop">67.5%</span></div>
+            <div class="pi-row"><span class="pi-lbl">PICO Fe</span><span class="pi-val col-rop">70% (230-235m)</span></div>
+            <div class="pi-row"><span class="pi-lbl">VOLUME ESTIMADO</span><span class="pi-val">2.4 Mt @ 65% Fe</span></div>
+          </div>
+        </div>
+      </div>
+    </div><!-- fim pageGeo -->
+
+    <!-- ═══ PÁGINA: MAPA GPS ═══ -->
+    <div id="pageMap" class="page">
+      <div class="map-full-grid">
+        <div class="map-canvas panel">
+          <div class="panel-title">◆ MAPA OPERACIONAL — MINA ITABIRA NORTE — UTM ZONA 23S</div>
+          <svg class="map-svg-big" viewBox="0 0 580 420" role="img" aria-label="Mapa operacional dos furos">
+            <rect width="580" height="420" fill="#0a1520" rx="4"/>
+            <defs>
+              <pattern id="mg" width="50" height="50" patternUnits="userSpaceOnUse">
+                <path d="M50 0L0 0 0 50" fill="none" stroke="rgba(0,212,255,0.06)" stroke-width=".5"/>
+              </pattern>
+            </defs>
+            <rect width="580" height="420" fill="url(#mg)" rx="4"/>
+            <ellipse cx="200" cy="180" rx="120" ry="80" fill="rgba(0,100,50,0.18)" stroke="rgba(0,200,80,0.2)" stroke-width="1"/>
+            <ellipse cx="380" cy="270" rx="100" ry="70" fill="rgba(0,80,40,0.15)" stroke="rgba(0,180,70,0.15)" stroke-width="1"/>
+            <ellipse cx="290" cy="120" rx="70" ry="45" fill="rgba(120,40,0,0.2)" stroke="rgba(180,80,0,0.2)" stroke-width="1"/>
+            <text x="200" y="185" text-anchor="middle" fill="rgba(0,200,80,0.4)" font-family="Share Tech Mono,monospace" font-size="9">ZONA A</text>
+            <text x="380" y="275" text-anchor="middle" fill="rgba(0,200,80,0.4)" font-family="Share Tech Mono,monospace" font-size="9">ZONA B</text>
+            <!-- Furos concluídos -->
+            <circle cx="130" cy="140" r="6" fill="none" stroke="rgba(0,212,255,0.4)" stroke-width="1.2"/>
+            <text x="130" y="128" text-anchor="middle" fill="#4a6b80" font-family="Share Tech Mono,monospace" font-size="8">FH-2840</text>
+            <circle cx="175" cy="200" r="6" fill="none" stroke="rgba(0,212,255,0.4)" stroke-width="1.2"/>
+            <text x="175" y="188" text-anchor="middle" fill="#4a6b80" font-family="Share Tech Mono,monospace" font-size="8">FH-2841</text>
+            <circle cx="240" cy="155" r="6" fill="none" stroke="rgba(0,212,255,0.4)" stroke-width="1.2"/>
+            <text x="240" y="143" text-anchor="middle" fill="#4a6b80" font-family="Share Tech Mono,monospace" font-size="8">FH-2842</text>
+            <circle cx="310" cy="195" r="6" fill="none" stroke="rgba(0,212,255,0.4)" stroke-width="1.2"/>
+            <text x="310" y="183" text-anchor="middle" fill="#4a6b80" font-family="Share Tech Mono,monospace" font-size="8">FH-2843</text>
+            <circle cx="360" cy="140" r="6" fill="none" stroke="rgba(0,212,255,0.4)" stroke-width="1.2"/>
+            <text x="360" y="128" text-anchor="middle" fill="#4a6b80" font-family="Share Tech Mono,monospace" font-size="8">FH-2844</text>
+            <circle cx="420" cy="200" r="6" fill="none" stroke="rgba(0,212,255,0.4)" stroke-width="1.2"/>
+            <text x="420" y="188" text-anchor="middle" fill="#4a6b80" font-family="Share Tech Mono,monospace" font-size="8">FH-2845</text>
+            <circle cx="460" cy="280" r="6" fill="none" stroke="rgba(0,212,255,0.4)" stroke-width="1.2"/>
+            <text x="460" y="268" text-anchor="middle" fill="#4a6b80" font-family="Share Tech Mono,monospace" font-size="8">FH-2846</text>
+            <!-- Furo ativo (pulsing rings) -->
+            <circle cx="520" cy="190" r="16" fill="none" stroke="rgba(0,212,255,0.1)" stroke-width="1"/>
+            <circle cx="520" cy="190" r="10" fill="none" stroke="#00d4ff" stroke-width="2"/>
+            <circle cx="520" cy="190" r="4" fill="#00d4ff"/>
+            <line x1="520" y1="190" x2="520" y2="390" stroke="rgba(0,212,255,0.45)" stroke-width="1.5" stroke-dasharray="4,3"/>
+            <text x="520" y="178" text-anchor="middle" fill="#00d4ff" font-family="Share Tech Mono,monospace" font-size="9" font-weight="bold">FH-2847</text>
+            <text x="520" y="168" text-anchor="middle" fill="#00ff9d" font-family="Share Tech Mono,monospace" font-size="8">● ATIVO</text>
+            <!-- Próximo planejado -->
+            <circle cx="490" cy="330" r="5" fill="none" stroke="rgba(255,214,0,0.5)" stroke-width="1.2" stroke-dasharray="3,2"/>
+            <text x="490" y="318" text-anchor="middle" fill="#ffd600" font-family="Share Tech Mono,monospace" font-size="8">FH-2848</text>
+            <text x="490" y="345" text-anchor="middle" fill="#ffd600" font-family="Share Tech Mono,monospace" font-size="7">PLAN.</text>
+            <!-- Legenda -->
+            <rect x="10" y="380" width="400" height="32" fill="rgba(7,13,20,0.85)" rx="3"/>
+            <circle cx="30" cy="396" r="5" fill="none" stroke="#00d4ff" stroke-width="1.5"/>
+            <circle cx="30" cy="396" r="2" fill="#00d4ff"/>
+            <text x="40" y="400" fill="#c8e6f5" font-family="Share Tech Mono,monospace" font-size="9">ATIVO</text>
+            <circle cx="100" cy="396" r="5" fill="none" stroke="rgba(0,212,255,0.4)" stroke-width="1.2"/>
+            <text x="110" y="400" fill="#4a6b80" font-family="Share Tech Mono,monospace" font-size="9">CONCLUÍDO</text>
+            <circle cx="195" cy="396" r="4" fill="none" stroke="rgba(255,214,0,0.5)" stroke-width="1.2" stroke-dasharray="3,2"/>
+            <text x="205" y="400" fill="#ffd600" font-family="Share Tech Mono,monospace" font-size="9">PLANEJADO</text>
+            <!-- Escala -->
+            <line x1="440" y1="396" x2="570" y2="396" stroke="#4a6b80" stroke-width="1"/>
+            <line x1="440" y1="392" x2="440" y2="400" stroke="#4a6b80" stroke-width="1"/>
+            <line x1="570" y1="392" x2="570" y2="400" stroke="#4a6b80" stroke-width="1"/>
+            <text x="505" y="390" text-anchor="middle" fill="#4a6b80" font-family="Share Tech Mono,monospace" font-size="8">500 m</text>
+          </svg>
+        </div>
+
+        <!-- LISTA FUROS -->
+        <div class="panel">
+          <div class="panel-title">◆ HISTÓRICO DE FUROS</div>
+          <div class="hole-list">
+            <div class="hole-row"><div class="hole-id">FH-2840</div><div class="hole-meta">280 m | Fe 62% | Concluído em 12/04</div><div class="hole-prog"><div class="prog-track"><div class="prog-fill" style="width:100%;background:var(--c3);"></div></div></div></div>
+            <div class="hole-row"><div class="hole-id">FH-2841</div><div class="hole-meta">320 m | Fe 58% | Concluído em 19/04</div><div class="hole-prog"><div class="prog-track"><div class="prog-fill" style="width:100%;background:var(--c3);"></div></div></div></div>
+            <div class="hole-row"><div class="hole-id">FH-2842</div><div class="hole-meta">260 m | Fe 65% | Concluído em 24/04</div><div class="hole-prog"><div class="prog-track"><div class="prog-fill" style="width:100%;background:var(--c3);"></div></div></div></div>
+            <div class="hole-row"><div class="hole-id">FH-2843</div><div class="hole-meta">310 m | Fe 61% | Concluído em 01/05</div><div class="hole-prog"><div class="prog-track"><div class="prog-fill" style="width:100%;background:var(--c3);"></div></div></div></div>
+            <div class="hole-row"><div class="hole-id">FH-2844</div><div class="hole-meta">290 m | Fe 63% | Concluído em 06/05</div><div class="hole-prog"><div class="prog-track"><div class="prog-fill" style="width:100%;background:var(--c3);"></div></div></div></div>
+            <div class="hole-row"><div class="hole-id">FH-2845</div><div class="hole-meta">300 m | Fe 66% | Concluído em 08/05</div><div class="hole-prog"><div class="prog-track"><div class="prog-fill" style="width:100%;background:var(--c3);"></div></div></div></div>
+            <div class="hole-row"><div class="hole-id">FH-2846</div><div class="hole-meta">285 m | Fe 64% | Concluído em 10/05</div><div class="hole-prog"><div class="prog-track"><div class="prog-fill" style="width:100%;background:var(--c3);"></div></div></div></div>
+            <div class="hole-row active-hole">
+              <div class="hole-id">FH-2847 ◉</div>
+              <div class="hole-meta" id="hole-meta-active">248.6 / 375.0 m — EM PROGRESSO</div>
+              <div class="hole-prog"><div class="prog-track"><div class="prog-fill" id="hole-bar" style="width:66%;background:var(--c1);"></div></div></div>
+            </div>
+            <div class="hole-row" style="border-color:rgba(255,214,0,0.3);">
+              <div class="hole-id" style="color:var(--c4);">FH-2848 …</div>
+              <div class="hole-meta" style="color:var(--c4);">375 m alvo | Início previsto: 20/05</div>
+              <div class="hole-prog"><div class="prog-track"><div class="prog-fill" style="width:0%;background:var(--c4);"></div></div></div>
+            </div>
+          </div>
+          <div style="margin-top:12px;padding-top:10px;border-top:.5px solid var(--border);">
+            <div class="pi-row"><span class="pi-lbl">FUROS CONCLUÍDOS</span><span class="pi-val col-rop">7</span></div>
+            <div class="pi-row"><span class="pi-lbl">METROS TOTAIS</span><span class="pi-val">2.045 m</span></div>
+            <div class="pi-row"><span class="pi-lbl">FE MÉDIO PROGRAMA</span><span class="pi-val col-torque">63.1%</span></div>
+            <div class="pi-row"><span class="pi-lbl">SONDA CS14-01</span><span class="pi-val col-c3">ATLAS COPCO</span></div>
+          </div>
+        </div>
+      </div>
+    </div><!-- fim pageMap -->
+
+    <!-- ═══ PÁGINA: ALARMES ═══ -->
+    <div id="pageAlarm" class="page">
+      <div style="margin-bottom:12px;display:flex;align-items:center;gap:12px;">
+        <div class="panel-title" style="margin:0;border:none;padding:0;">⚠ CENTRAL DE ALARMES E EVENTOS</div>
+        <div class="mono" style="font-size:9px;background:rgba(255,214,0,.12);color:var(--c4);border:.5px solid rgba(255,214,0,.3);border-radius:3px;padding:3px 10px;">1 ATIVO</div>
+        <div class="mono" style="font-size:9px;background:rgba(0,255,157,.07);color:var(--c3);border:.5px solid rgba(0,255,157,.2);border-radius:3px;padding:3px 10px;">8 OK</div>
+      </div>
+      <div class="alarm-full-grid">
+        <div class="alarm-full-item af-warn">
+          <span class="af-badge badge-warn">ATIVO</span>
+          <div class="af-title" style="color:var(--c4);">⚠ PRESSÃO DO SISTEMA DE AVANÇO ELEVADA</div>
+          <div class="af-desc">Pressão hidráulica do feed system detectada em 142 bar, acima do limite recomendado de 135 bar. Recomenda-se verificação imediata do regulador de pressão e filtros hidráulicos. Sensor HYD-FEED-01 confirmado.</div>
+          <div class="af-time">⏱ 08:43:12 — Sonda CS14-01 | Sensor: HYD-FEED-01 | Duração: 22 min</div>
+        </div>
+        <div class="alarm-full-item af-ok">
+          <span class="af-badge badge-ok">NORMAL</span>
+          <div class="af-title" style="color:var(--c3);">✓ SISTEMA DE ROTAÇÃO — PARÂMETROS NORMAIS</div>
+          <div class="af-desc">Rotação operando dentro dos parâmetros: 720 RPM com torque de 184 N·m. Sem variações anômalas detectadas nas últimas 2 horas de operação contínua.</div>
+          <div class="af-time">⏱ 08:40:00 — Verificação automática de rotina</div>
+        </div>
+        <div class="alarm-full-item af-ok">
+          <span class="af-badge badge-ok">NORMAL</span>
+          <div class="af-title" style="color:var(--c3);">✓ GPS RTK — SINAL ESTÁVEL</div>
+          <div class="af-desc">Receptor GPS RTK com precisão de 8 mm. Coordenadas sendo registradas continuamente. Sincronização com servidor de referência ativa. 14 satélites rastreados, HDOP: 0.8.</div>
+          <div class="af-time">⏱ Contínuo — Receptor: GPS-RTK-01 | Satélites: 14</div>
+        </div>
+        <div class="alarm-full-item af-ok">
+          <span class="af-badge badge-ok">ONLINE</span>
+          <div class="af-title" style="color:var(--c3);">✓ STARLINK — CONEXÃO ATIVA</div>
+          <div class="af-desc">Uplink Starlink operacional. Latência média de 28 ms. Telemetria sendo transmitida ao servidor em nuvem a cada 500 ms sem interrupções. Uptime: 99.94%.</div>
+          <div class="af-time">⏱ Contínuo — Uptime: 99.94% | Latência: 28ms</div>
+        </div>
+        <div class="alarm-full-item af-info">
+          <span class="af-badge" style="background:rgba(0,212,255,.1);color:var(--c1);">INFO</span>
+          <div class="af-title" style="color:var(--c1);">ℹ TEMPERATURA DO MOTOR — MONITORAMENTO</div>
+          <div class="af-desc">Temperatura do motor diesel em 68°C. Dentro da faixa operacional (40–90°C). Sistema de resfriamento funcionando normalmente. Limite de alerta: 80°C.</div>
+          <div class="af-time">⏱ Contínuo — Sensor: TEMP-MOT-01 | Limite: 80°C</div>
+        </div>
+        <div class="alarm-full-item af-ok">
+          <span class="af-badge badge-ok">SYNC</span>
+          <div class="af-title" style="color:var(--c3);">✓ RASPBERRY Pi DAQ — SINCRONIZADO</div>
+          <div class="af-desc">Central de aquisição de dados Raspberry Pi 4B operando normalmente. CPU em 34%, buffer de dados ok, protocolo MQTT ativo com publicação a cada 500 ms. Sem perda de pacotes.</div>
+          <div class="af-time">⏱ Contínuo — Node: RPi-DAQ-CS14 | Uptime: 12d 4h</div>
+        </div>
+        <div class="alarm-full-item af-ok">
+          <span class="af-badge badge-ok">NORMAL</span>
+          <div class="af-title" style="color:var(--c3);">✓ VIBRAÇÃO — DENTRO DO LIMITE</div>
+          <div class="af-desc">Nível de vibração medido em 0.42 G-RMS, abaixo do limite de alerta de 0.80 G-RMS. Operação confortável para a coroa e haste de perfuração. Tendência estável.</div>
+          <div class="af-time">⏱ Contínuo — Sensor: ACC-01 | Limite: 0.80 G-RMS</div>
+        </div>
+        <div class="alarm-full-item af-info">
+          <span class="af-badge" style="background:rgba(0,212,255,.1);color:var(--c1);">INFO</span>
+          <div class="af-title" style="color:var(--c1);">ℹ DESGASTE DE COROA — MONITORAMENTO</div>
+          <div class="af-desc">Coroa HQ3 diamantada com 38% de desgaste estimado por horas de operação e ROP. Troca recomendada a partir de 70%. Próxima inspeção prevista para: amanhã, 07:00.</div>
+          <div class="af-time">⏱ Monitoramento contínuo — Coroa: HQ3-DIAM-14</div>
+        </div>
+      </div>
+    </div><!-- fim pageAlarm -->
+
+    <!-- ═══ PÁGINA: RELATÓRIOS ═══ -->
+    <div id="pageRel" class="page">
+      <div class="rel-grid">
+        <div class="rel-card panel">
+          <div class="panel-title">◆ PRODUÇÃO DO TURNO — TURNO A</div>
+          <div class="rel-big-num" id="rel-metros">28.4 m</div>
+          <div class="rel-sub">metros perfurados neste turno (06h–18h)</div>
+          <div style="height:.5px;background:var(--border);margin:12px 0;"></div>
+          <div class="kpi-row"><span class="kpi-key">Turno</span><span class="kpi-val">Turno A — 06h às 18h</span></div>
+          <div class="kpi-row"><span class="kpi-key">Operador</span><span class="kpi-val" id="rel-op">—</span></div>
+          <div class="kpi-row"><span class="kpi-key">Sonda</span><span class="kpi-val">Atlas Copco CS14-01</span></div>
+          <div class="kpi-row"><span class="kpi-key">Furo atual</span><span class="kpi-val">FH-2847</span></div>
+          <div class="kpi-row"><span class="kpi-key">Profundidade atual</span><span class="kpi-val" id="rel-depth">248.6 m</span></div>
+          <div class="kpi-row"><span class="kpi-key">Profundidade alvo</span><span class="kpi-val">375.0 m</span></div>
+          <div class="kpi-row"><span class="kpi-key">Restante</span><span class="kpi-val" id="rel-remain">126.4 m</span></div>
+          <button class="btn-export" onclick="alert('Exportando PDF... (integrar com backend Java)')">📄 EXPORTAR PDF</button>
+          <button class="btn-export" onclick="alert('Exportando Excel... (integrar com backend Java)')">📄 EXPORTAR XLSX</button>
+        </div>
+
+        <div class="rel-card panel">
+          <div class="panel-title">◆ INDICADORES OPERACIONAIS (KPIs)</div>
+          <div class="kpi-row"><span class="kpi-key">Tempo produtivo</span><span class="kpi-val col-rop">81%</span></div>
+          <div class="kpi-row"><span class="kpi-key">Tempo improdutivo</span><span class="kpi-val col-vib">19%</span></div>
+          <div class="kpi-row"><span class="kpi-key">Horas operacionais</span><span class="kpi-val" id="rel-hours">6h 42m</span></div>
+          <div class="kpi-row"><span class="kpi-key">ROP médio turno</span><span class="kpi-val">1.82 m/min</span></div>
+          <div class="kpi-row"><span class="kpi-key">ROP máximo turno</span><span class="kpi-val">2.41 m/min</span></div>
+          <div class="kpi-row"><span class="kpi-key">ROP mínimo turno</span><span class="kpi-val">1.12 m/min</span></div>
+          <div class="kpi-row"><span class="kpi-key">Combustível usado</span><span class="kpi-val" id="rel-fuel">187 L</span></div>
+          <div class="kpi-row"><span class="kpi-key">Consumo médio</span><span class="kpi-val">28.4 L/h</span></div>
+          <div class="kpi-row"><span class="kpi-key">Custo combustível</span><span class="kpi-val">R$ 1.028,50</span></div>
+          <div class="kpi-row"><span class="kpi-key">Alarmes ativos</span><span class="kpi-val warn">1 (atenção)</span></div>
+          <div class="kpi-row"><span class="kpi-key">Amostras coletadas</span><span class="kpi-val">9 amostras</span></div>
+          <div class="kpi-row"><span class="kpi-key">Recuperação média</span><span class="kpi-val col-rop">90.5%</span></div>
+          <div class="kpi-row"><span class="kpi-key">Disponib. mecânica</span><span class="kpi-val col-rop">94.2%</span></div>
+        </div>
+
+        <div class="rel-card panel" style="grid-column:1/-1;">
+          <div class="panel-title">◆ PRODUÇÃO SEMANAL — METROS PERFURADOS POR DIA</div>
+          <div style="position:relative;height:180px;width:100%;">
+            <canvas id="weekChart" role="img" aria-label="Produção semanal"></canvas>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px;">
+            <div style="text-align:center;">
+              <div style="font-family:'Share Tech Mono',monospace;font-size:18px;color:var(--c1);">205.7</div>
+              <div style="font-size:10px;color:var(--dim);margin-top:2px;">METROS NA SEMANA</div>
+            </div>
+            <div style="text-anchor:center;text-align:center;">
+              <div style="font-family:'Share Tech Mono',monospace;font-size:18px;color:var(--c3);">35.1</div>
+              <div style="font-size:10px;color:var(--dim);margin-top:2px;">MELHOR DIA (TER)</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-family:'Share Tech Mono',monospace;font-size:18px;color:var(--c4);">29.4</div>
+              <div style="font-size:10px;color:var(--dim);margin-top:2px;">MÉDIA DIÁRIA</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-family:'Share Tech Mono',monospace;font-size:18px;color:var(--c5);">7</div>
+              <div style="font-size:10px;color:var(--dim);margin-top:2px;">AMOSTRAS SEMANA</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- fim pageRel -->
+
+    <!-- ═══ PÁGINA: CONFIGURAÇÕES ═══ -->
+    <div id="pageCfg" class="page">
+      <div class="config-grid">
+        <div class="config-card panel">
+          <div class="panel-title">◆ PARÂMETROS DA SONDA</div>
+          <div class="cfg-row"><span class="cfg-key">RPM ALVO</span><span class="cfg-val">720 RPM</span></div>
+          <div class="cfg-row"><span class="cfg-key">TORQUE MÁX.</span><span class="cfg-val">240 N·m</span></div>
+          <div class="cfg-row"><span class="cfg-key">PRESSÃO LIM.</span><span class="cfg-val">135 bar</span></div>
+          <div class="cfg-row"><span class="cfg-key">WOB ALVO</span><span class="cfg-val">12–16 kN</span></div>
+          <div class="cfg-row"><span class="cfg-key">VAZÃO MÍNIMA</span><span class="cfg-val">30 L/min</span></div>
+          <div class="cfg-row"><span class="cfg-key">TEMP. ALERTA</span><span class="cfg-val">80°C</span></div>
+          <div class="cfg-row"><span class="cfg-key">VIB. ALERTA</span><span class="cfg-val">0.80 G-RMS</span></div>
+          <div class="cfg-row"><span class="cfg-key">DIÂMETRO FURO</span><span class="cfg-val">NQ — 47.6mm</span></div>
+        </div>
+        <div class="config-card panel">
+          <div class="panel-title">◆ CONFIGURAÇÕES DO SISTEMA</div>
+          <div class="cfg-row">
+            <span class="cfg-key">ALERTAS SONOROS</span>
+            <div class="toggle-wrap">
+              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+              <span class="cfg-val" style="font-size:10px;">ON</span>
+            </div>
+          </div>
+          <div class="cfg-row">
+            <span class="cfg-key">MODO NOTURNO</span>
+            <div class="toggle-wrap">
+              <div class="toggle" onclick="this.classList.toggle('on')"></div>
+              <span class="cfg-val" style="font-size:10px;">OFF</span>
+            </div>
+          </div>
+          <div class="cfg-row">
+            <span class="cfg-key">BACKUP AUTO</span>
+            <div class="toggle-wrap">
+              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+              <span class="cfg-val" style="font-size:10px;">ON</span>
+            </div>
+          </div>
+          <div class="cfg-row">
+            <span class="cfg-key">ENVIO MQTT</span>
+            <div class="toggle-wrap">
+              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+              <span class="cfg-val" style="font-size:10px;">ON</span>
+            </div>
+          </div>
+          <div class="cfg-row">
+            <span class="cfg-key">LOG DETALHADO</span>
+            <div class="toggle-wrap">
+              <div class="toggle" onclick="this.classList.toggle('on')"></div>
+              <span class="cfg-val" style="font-size:10px;">OFF</span>
+            </div>
+          </div>
+          <div class="cfg-row"><span class="cfg-key">INTERVALO MQTT</span><span class="cfg-val">500 ms</span></div>
+          <div class="cfg-row"><span class="cfg-key">SERVIDOR MQTT</span><span class="cfg-val">mqtt.uai.io:1883</span></div>
+          <div class="cfg-row"><span class="cfg-key">API ENDPOINT</span><span class="cfg-val">api.uai.io/v2</span></div>
+        </div>
+        <div class="config-card panel">
+          <div class="panel-title">◆ INFORMAÇÕES DO SISTEMA</div>
+          <div class="cfg-row"><span class="cfg-key">VERSÃO SW</span><span class="cfg-val">v5.0.1</span></div>
+          <div class="cfg-row"><span class="cfg-key">BUILD</span><span class="cfg-val">20250513</span></div>
+          <div class="cfg-row"><span class="cfg-key">PLATAFORMA</span><span class="cfg-val">Java 17 / Spring</span></div>
+          <div class="cfg-row"><span class="cfg-key">BANCO DE DADOS</span><span class="cfg-val">PostgreSQL 15</span></div>
+          <div class="cfg-row"><span class="cfg-key">BROKER MQTT</span><span class="cfg-val">Mosquitto 2.0</span></div>
+          <div class="cfg-row"><span class="cfg-key">DAQ HARDWARE</span><span class="cfg-val">RPi 4B — 4GB</span></div>
+          <div class="cfg-row"><span class="cfg-key">OS DAQ</span><span class="cfg-val">Raspbian 11</span></div>
+          <div class="cfg-row"><span class="cfg-key">LICENÇA</span><span class="cfg-val col-rop">ATIVA — PRO</span></div>
+          <div style="margin-top:12px;">
+            <button class="btn-export" style="font-size:9px;padding:6px 12px;" onclick="alert('Reiniciando DAQ...')">↺ REINICIAR DAQ</button>
+            <button class="btn-export" style="font-size:9px;padding:6px 12px;border-color:var(--c3);color:var(--c3);" onclick="alert('Backup realizado!')">💾 BACKUP MANUAL</button>
+          </div>
+        </div>
+      </div>
+    </div><!-- fim pageCfg -->
+
+    <!-- ═══ PÁGINA: MANUTENÇÃO CS14 ═══ -->
+    <div id="pageMaint" class="page">
+
+      <!-- SUB-TABS MANUTENÇÃO -->
+      <div style="display:flex;gap:2px;margin-bottom:14px;border-bottom:.5px solid var(--border);padding-bottom:0;">
+        <div class="mtab active" onclick="mSwitchTab('mDash',this)">📊 VISÃO GERAL</div>
+        <div class="mtab" onclick="mSwitchTab('mCad',this)">➕ CADASTRO</div>
+        <div class="mtab" onclick="mSwitchTab('mSub',this)">🔄 SUBSTITUIÇÃO</div>
+        <div class="mtab" onclick="mSwitchTab('mHist',this)">📘 HISTÓRICO</div>
+        <div class="mtab" onclick="mSwitchTab('mNotif',this)">📢 NOTIFICAÇÕES</div>
+        <div class="mtab" onclick="mSwitchTab('mRel',this)">📋 RELATÓRIO</div>
+      </div>
+      <style>
+        .mtab{padding:6px 14px;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--dim);cursor:pointer;border-radius:4px 4px 0 0;border-bottom:2px solid transparent;transition:all .2s;}
+        .mtab:hover{color:var(--text);}
+        .mtab.active{color:var(--c1);border-bottom-color:var(--c1);}
+        .mscreen{display:none;animation:fadeIn .25s ease;}
+        .mscreen.active{display:block;}
+      </style>
+
+      <!-- ── VISÃO GERAL ── -->
+      <div id="mDash" class="mscreen active">
+        <div class="maint-grid-4" style="margin-bottom:14px;">
+          <div class="maint-kpi mk-ok"><div class="maint-kpi-val" id="mkpi-ativas">0</div><div class="maint-kpi-lbl">PEÇAS ATIVAS</div></div>
+          <div class="maint-kpi mk-warn"><div class="maint-kpi-val" id="mkpi-manut">0</div><div class="maint-kpi-lbl">EM MANUTENÇÃO</div></div>
+          <div class="maint-kpi"><div class="maint-kpi-val" id="mkpi-subs">0</div><div class="maint-kpi-lbl">SUBSTITUIÇÕES TOTAIS</div></div>
+          <div class="maint-kpi mk-err"><div class="maint-kpi-val" id="mkpi-mes">0</div><div class="maint-kpi-lbl">TROCAS NO MÊS</div></div>
+        </div>
+        <div class="maint-grid-2">
+          <div class="maint-card">
+            <div class="maint-card-title">⚠ PEÇAS COM MAIOR INCIDÊNCIA DE FALHA</div>
+            <div id="mdash-falhas"><div class="mempty"><div class="mempty-ico">📊</div>Nenhum dado ainda</div></div>
+          </div>
+          <div class="maint-card">
+            <div class="maint-card-title">🔄 ÚLTIMAS SUBSTITUIÇÕES</div>
+            <div id="mdash-ultimas"><div class="mempty"><div class="mempty-ico">🔄</div>Nenhuma substituição</div></div>
+          </div>
+        </div>
+        <div class="maint-card">
+          <div class="maint-card-title">📍 STATUS POR LOCAL DA SONDA</div>
+          <div id="mdash-locais" class="maint-grid-3"></div>
+        </div>
+      </div>
+
+      <!-- ── CADASTRO ── -->
+      <div id="mCad" class="mscreen">
+        <div class="maint-card">
+          <div class="maint-card-title">➕ REGISTRAR NOVA PEÇA</div>
+          <div class="mf-row">
+            <div class="mf-group"><label class="mf-label">NOME DA PEÇA *</label><input class="mf-input" id="cNome" placeholder="Ex: Rolamento de mesa rotativa"/></div>
+            <div class="mf-group"><label class="mf-label">CÓDIGO / ID ÚNICO *</label><input class="mf-input" id="cId" placeholder="Ex: CS14-MR-001"/></div>
+          </div>
+          <div class="mf-row">
+            <div class="mf-group">
+              <label class="mf-label">LOCAL NA SONDA *</label>
+              <select class="mf-select" id="cLocal">
+                <option value="">Selecionar...</option>
+                <option>Torre</option><option>Mesa Rotativa</option><option>Bomba de Lama</option>
+                <option>Linha Hidráulica</option><option>Motor Principal</option>
+                <option>Cabeça de Perfuração</option><option>Bloco de Hastes</option>
+                <option>Sistema de Circulação</option><option>Painel de Controle</option>
+                <option>Guincho</option><option>Subestrutura</option><option>Coroa</option><option>Outros</option>
+              </select>
+            </div>
+            <div class="mf-group">
+              <label class="mf-label">STATUS INICIAL</label>
+              <select class="mf-select" id="cStatus">
+                <option value="Ativa">Ativa</option>
+                <option value="Em Manutenção">Em Manutenção</option>
+                <option value="Substituída">Substituída</option>
+              </select>
+            </div>
+          </div>
+          <div class="mf-row mf-1">
+            <div class="mf-group"><label class="mf-label">DATA DE INSTALAÇÃO</label><input class="mf-input" id="cData" type="date"/></div>
+          </div>
+          <div class="mf-row mf-1">
+            <div class="mf-group"><label class="mf-label">OBSERVAÇÕES</label><textarea class="mf-textarea" id="cObs" placeholder="Especificações técnicas, fornecedor, etc."></textarea></div>
+          </div>
+          <div class="mbtn-row">
+            <button class="mbtn mbtn-p" onclick="mCadastrar()">✚ CADASTRAR PEÇA</button>
+            <button class="mbtn mbtn-d" onclick="mLimparCad()">✕ LIMPAR</button>
+          </div>
+        </div>
+        <div class="maint-card">
+          <div class="maint-card-title">📋 PEÇAS CADASTRADAS</div>
+          <div class="msearch"><input id="mSearchPecas" placeholder="BUSCAR POR NOME, CÓDIGO OU LOCAL..." oninput="mFiltrarPecas()"/></div>
+          <div class="tbl-wrap">
+            <table class="maint-table">
+              <thead><tr><th>CÓDIGO</th><th>NOME</th><th>LOCAL</th><th>STATUS</th><th>INSTALAÇÃO</th><th>TROCAS</th><th>AÇÕES</th></tr></thead>
+              <tbody id="mtblPecas"><tr><td colspan="7" class="mempty">Nenhuma peça cadastrada.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SUBSTITUIÇÃO ── -->
+      <div id="mSub" class="mscreen">
+        <div class="maint-card">
+          <div class="maint-card-title">🔄 REGISTRAR SUBSTITUIÇÃO DE PEÇA</div>
+          <div style="background:rgba(255,214,0,.06);border:.5px solid rgba(255,214,0,.2);border-radius:4px;padding:8px 12px;margin-bottom:12px;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--c4);">
+            ⚠ Todos os campos * são obrigatórios. A notificação padrão será gerada automaticamente.
+          </div>
+          <div class="mf-row">
+            <div class="mf-group"><label class="mf-label">PEÇA REMOVIDA *</label><select class="mf-select" id="sAntiga" onchange="mPreencherLocal()"><option value="">Selecionar...</option></select></div>
+            <div class="mf-group"><label class="mf-label">MOTIVO *</label>
+              <select class="mf-select" id="sMotivo"><option value="">Selecionar...</option><option value="Falha">Falha</option><option value="Desgaste">Desgaste</option><option value="Preventiva">Preventiva</option></select>
+            </div>
+          </div>
+          <div class="mf-row mf-3">
+            <div class="mf-group"><label class="mf-label">NOME DA PEÇA NOVA *</label><input class="mf-input" id="sNovaNome" placeholder="Ex: Rolamento SKF 6210"/></div>
+            <div class="mf-group"><label class="mf-label">CÓDIGO DA NOVA *</label><input class="mf-input" id="sNovaId" placeholder="Ex: CS14-MR-002"/></div>
+            <div class="mf-group"><label class="mf-label">LOCAL</label><input class="mf-input" id="sLocal" placeholder="Auto"/></div>
+          </div>
+          <div class="mf-row">
+            <div class="mf-group"><label class="mf-label">DESTINO DA PEÇA REMOVIDA *</label>
+              <select class="mf-select" id="sDestino"><option value="">Selecionar...</option><option value="Estoque">Estoque</option><option value="Manutenção">Manutenção</option><option value="Calibração">Calibração</option><option value="Descarte">Descarte</option></select>
+            </div>
+            <div class="mf-group"><label class="mf-label">TÉCNICO RESPONSÁVEL *</label><input class="mf-input" id="sTecnico" placeholder="Nome completo"/></div>
+          </div>
+          <div class="mf-row">
+            <div class="mf-group"><label class="mf-label">DATA DA TROCA *</label><input class="mf-input" id="sData" type="date"/></div>
+            <div class="mf-group"><label class="mf-label">HORA DA TROCA *</label><input class="mf-input" id="sHora" type="time"/></div>
+          </div>
+          <div class="mf-row mf-1">
+            <div class="mf-group"><label class="mf-label">OBSERVAÇÕES</label><textarea class="mf-textarea" id="sObs" placeholder="Detalhes, condições, recomendações..."></textarea></div>
+          </div>
+          <div class="mbtn-row">
+            <button class="mbtn mbtn-s" onclick="mRegistrarSub()">✔ REGISTRAR SUBSTITUIÇÃO</button>
+            <button class="mbtn mbtn-d" onclick="mLimparSub()">✕ LIMPAR</button>
+          </div>
+        </div>
+        <div class="maint-card">
+          <div class="maint-card-title">📋 HISTÓRICO DE SUBSTITUIÇÕES</div>
+          <div class="tbl-wrap">
+            <table class="maint-table">
+              <thead><tr><th>DATA/HORA</th><th>PEÇA REMOVIDA</th><th>PEÇA INSTALADA</th><th>LOCAL</th><th>MOTIVO</th><th>DESTINO</th><th>TÉCNICO</th></tr></thead>
+              <tbody id="mtblSubs"><tr><td colspan="7" class="mempty">Nenhuma substituição.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── HISTÓRICO ── -->
+      <div id="mHist" class="mscreen">
+        <div class="maint-card">
+          <div class="maint-card-title">📘 DIÁRIO TÉCNICO – HISTÓRICO POR PEÇA</div>
+          <div class="msearch"><input id="mSearchHist" placeholder="BUSCAR POR NOME OU CÓDIGO..." oninput="mFiltrarHist()"/></div>
+          <div id="mHistList"><div class="mempty"><div class="mempty-ico">📘</div>Nenhuma movimentação registrada.</div></div>
+        </div>
+      </div>
+
+      <!-- ── NOTIFICAÇÕES ── -->
+      <div id="mNotif" class="mscreen">
+        <div class="maint-card">
+          <div class="maint-card-title">📢 CENTRAL DE NOTIFICAÇÕES DE MANUTENÇÃO – CS 14</div>
+          <div id="mNotifList"><div class="mempty"><div class="mempty-ico">📢</div>Nenhuma notificação gerada.</div></div>
+        </div>
+      </div>
+
+      <!-- ── RELATÓRIO ── -->
+      <div id="mRel" class="mscreen">
+        <div class="maint-grid-4" style="margin-bottom:14px;" id="mRelKpis"></div>
+        <div class="maint-grid-2">
+          <div class="maint-card">
+            <div class="maint-card-title">⚠ MAIOR INCIDÊNCIA DE FALHAS</div>
+            <div id="mRelFalhas"><div class="mempty">Sem dados</div></div>
+          </div>
+          <div class="maint-card">
+            <div class="maint-card-title">📍 LOCAIS MAIS CRÍTICOS</div>
+            <div id="mRelLocais"><div class="mempty">Sem dados</div></div>
+          </div>
+        </div>
+        <div class="maint-card">
+          <div class="maint-card-title">📅 SUBSTITUIÇÕES POR MÊS</div>
+          <div id="mRelMes"><div class="mempty">Sem dados</div></div>
+        </div>
+        <div style="text-align:center;margin-top:8px;">
+          <button class="mbtn mbtn-p" onclick="window.print()">🖨 IMPRIMIR RELATÓRIO</button>
+        </div>
+      </div>
+
+    </div><!-- fim pageMaint -->
+</div><!-- fim dashScreen -->
+
+<!-- FLOATING NOTIF MANUTENÇÃO -->
+<div id="mNotifArea"></div>
+
+<!-- MODAL DETALHE PEÇA -->
+<div id="maintModal" class="hidden">
+  <div class="mm-box">
+    <button class="mm-close" onclick="mCloseModal()">✕</button>
+    <div class="mm-title" id="mmTitle">DETALHES DA PEÇA</div>
+    <div id="mmBody"></div>
+  </div>
+</div>
+
+<script>
+/* ═════════════════════════════════════════════════
+   BOOT SEQUENCE
+═════════════════════════════════════════════════ */
+const bootMessages = [
+  { text:'INICIANDO KERNEL UAI TELEMETRIA v5.0.1', type:'ok', delay:0 },
+  { text:'CARREGANDO MÓDULO MQTT...', type:'ok', delay:200 },
+  { text:'CARREGANDO MÓDULO GPS-RTK...', type:'ok', delay:400 },
+  { text:'CARREGANDO MÓDULO MODBUS-RTU...', type:'ok', delay:600 },
+  { text:'INICIANDO RASPBERRY Pi DAQ...', type:'ok', delay:750 },
+  { text:'CONECTANDO AO BROKER MQTT...', type:'ok', delay:900 },
+  { text:'FEED SYSTEM: pressão levemente elevada', type:'warn', delay:1050 },
+  { text:'CARREGANDO HISTÓRICO DE FUROS...', type:'ok', delay:1200 },
+  { text:'INICIALIZANDO CHARTS ENGINE...', type:'ok', delay:1350 },
+  { text:'SISTEMA PRONTO — ACESSO LIBERADO', type:'ok', delay:1500 },
+];
+
+const bootLines = document.getElementById('bootLines');
+const bootBar   = document.getElementById('bootBar');
+const bootPct   = document.getElementById('bootPct');
+
+bootMessages.forEach((msg, i) => {
+  setTimeout(() => {
+    const div = document.createElement('div');
+    div.className = 'boot-line ' + msg.type;
+    div.textContent = '> ' + msg.text;
+    div.style.animationDelay = '0s';
+    bootLines.appendChild(div);
+    const pct = Math.round(((i + 1) / bootMessages.length) * 100);
+    bootBar.style.width = pct + '%';
+    bootPct.textContent = pct + '%';
+  }, msg.delay);
+});
+
+setTimeout(() => {
+  document.getElementById('bootScreen').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  // AUTO-LOGIN: abre direto no dashboard após boot
+  setTimeout(() => autoDemo(), 300);
+}, 2100);
+
+function autoDemo(){
+  document.getElementById('userInput').value = 'admin';
+  document.getElementById('passInput').value = 'admin';
+  document.getElementById('roleSelect').value = 'adm';
+  doLogin();
+}
+
+/* ═════════════════════════════════════════════════
+   USUÁRIOS
+═════════════════════════════════════════════════ */
+const USERS = {
+  operador:   { pass:'1234',   roles:['op'],                   name:'OPERADOR SILVA' },
+  admin:      { pass:'admin',  roles:['op','geo','sup','adm','eng'], name:'ADMINISTRADOR' },
+  geolo:      { pass:'1234',   roles:['geo'],                  name:'GEÓLOGO COSTA' },
+  engenheiro: { pass:'eng123', roles:['eng','sup'],            name:'ENG. MIRANDA' },
+};
+
+let currentUser = '';
+
+/* ═════════════════════════════════════════════════
+   OLHO (SENHA)
+═════════════════════════════════════════════════ */
+const eyeBtn    = document.getElementById('eyeBtn');
+const passInput = document.getElementById('passInput');
+let showPass = false;
+eyeBtn.addEventListener('click', () => {
+  showPass = !showPass;
+  passInput.type = showPass ? 'text' : 'password';
+  eyeBtn.textContent = showPass ? '🙈' : '👁';
+});
+
+/* ═════════════════════════════════════════════════
+   LOGIN
+═════════════════════════════════════════════════ */
+const loginBtn     = document.getElementById('loginBtn');
+const loadingBar   = document.getElementById('loadingBar');
+const loadingFill  = document.getElementById('loadingFill');
+const loginError   = document.getElementById('loginError');
+const loginSuccess = document.getElementById('loginSuccess');
+
+function showLoginError(msg) {
+  loginError.querySelector('span').textContent = msg;
+  loginError.classList.remove('hidden');
+  loginSuccess.classList.add('hidden');
+  loadingBar.style.display = 'none';
+  loadingFill.style.width  = '0';
+  loginBtn.disabled = false;
+  loginBtn.textContent = '▶ ACESSAR SISTEMA';
+}
+
+loginBtn.addEventListener('click', doLogin);
+document.getElementById('demoBtn').addEventListener('click', () => {
+  document.getElementById('userInput').value = 'admin';
+  document.getElementById('passInput').value = 'admin';
+  document.getElementById('roleSelect').value = 'adm';
+  doLogin();
+});
+document.getElementById('userInput').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+passInput.addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+function doLogin() {
+  const user = document.getElementById('userInput').value.trim().toLowerCase();
+  const pass = passInput.value;
+  const role = document.getElementById('roleSelect').value;
+
+  loginError.classList.add('hidden');
+  loginSuccess.classList.add('hidden');
+
+  if(!user){ showLoginError('Informe o nome de usuário.'); return; }
+  if(!pass){ showLoginError('Informe a senha.'); return; }
+  if(!role){ showLoginError('Selecione o perfil de acesso.'); return; }
+
+  loginBtn.disabled = true;
+  loginBtn.textContent = '⏳ VERIFICANDO...';
+  loadingBar.style.display = 'block';
+
+  let pct = 0;
+  const bar = setInterval(() => {
+    pct = Math.min(pct + Math.random() * 20, 88);
+    loadingFill.style.width = pct + '%';
+  }, 80);
+
+  setTimeout(() => {
+    clearInterval(bar);
+    const found = USERS[user];
+    if(!found){ showLoginError('Usuário não encontrado no sistema.'); return; }
+    if(found.pass !== pass){ showLoginError('Senha incorreta. Tente novamente.'); return; }
+    if(!found.roles.includes(role)){ showLoginError('Perfil não autorizado para este usuário.'); return; }
+
+    loadingFill.style.width = '100%';
+    currentUser = found.name;
+
+    setTimeout(() => {
+      loginSuccess.classList.remove('hidden');
+      loginBtn.textContent = '✓ ACESSO AUTORIZADO';
+      loginBtn.style.borderColor = 'var(--c3)';
+      loginBtn.style.color = 'var(--c3)';
+      setTimeout(() => openDash(), 700);
+    }, 200);
+  }, 1200);
+}
+
+function openDash() {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('dashScreen').classList.remove('hidden');
+  document.getElementById('loggedUser').textContent = currentUser;
+  document.getElementById('rel-op').textContent = currentUser;
+  initDash();
+}
+
+/* ═════════════════════════════════════════════════
+   LOGOUT
+═════════════════════════════════════════════════ */
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  stopIntervals();
+  document.getElementById('dashScreen').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  loginBtn.disabled = false;
+  loginBtn.textContent = '▶ ACESSAR SISTEMA';
+  loginBtn.style.borderColor = 'var(--c1)';
+  loginBtn.style.color = 'var(--c1)';
+  loginSuccess.classList.add('hidden');
+  loadingBar.style.display = 'none';
+  loadingFill.style.width = '0';
+  document.getElementById('userInput').value = '';
+  passInput.value = '';
+  document.getElementById('roleSelect').value = '';
+});
+
+/* ═════════════════════════════════════════════════
+   NAV TABS
+═════════════════════════════════════════════════ */
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.page).classList.add('active');
+  });
+});
+
+/* ═════════════════════════════════════════════════
+   RELÓGIO E DATA
+═════════════════════════════════════════════════ */
+function updateClock() {
+  const d = new Date();
+  document.getElementById('dashClock').textContent =
+    [d.getHours(),d.getMinutes(),d.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yy = d.getFullYear();
+  const el = document.getElementById('dashDate');
+  if(el) el.textContent = `${dd}/${mm}/${yy}`;
+}
+
+/* ═════════════════════════════════════════════════
+   CHARTS CONFIG
+═════════════════════════════════════════════════ */
+const N = 40;
+function makeData(base, delta){ return Array.from({length:N}, ()=>+(base+(Math.random()-.5)*2*delta).toFixed(2)); }
+function makeLbls(){ return Array.from({length:N}, (_,i)=>`-${(N-i)*5}s`); }
+function rnd(base, delta){ return +(base+(Math.random()-.5)*2*delta).toFixed(2); }
+
+const chartOpts = (yMin, yMax, limitVal) => ({
+  responsive:true, maintainAspectRatio:false, animation:{duration:200},
+  plugins:{
+    legend:{display:false},
+    annotation: limitVal ? {
+      annotations:{ limit:{ type:'line', yMin:limitVal, yMax:limitVal, borderColor:'rgba(251,113,133,0.4)', borderWidth:1, borderDash:[4,2] } }
+    } : undefined
+  },
+  scales:{
+    x:{ticks:{color:'#2a4a60',font:{size:8},maxTicksLimit:6,maxRotation:0},grid:{color:'rgba(0,212,255,0.04)'}},
+    y:{min:yMin,max:yMax,ticks:{color:'#2a4a60',font:{size:8}},grid:{color:'rgba(0,212,255,0.04)'}}
+  }
+});
+
+function mkLine(id, data, color, yMin, yMax) {
+  return new Chart(document.getElementById(id), {
+    type:'line',
+    data:{
+      labels:makeLbls(),
+      datasets:[{
+        data:[...data],borderColor:color,
+        backgroundColor:color+'18',
+        borderWidth:1.5,pointRadius:0,fill:true,tension:.4
+      }]
+    },
+    options:chartOpts(yMin, yMax)
+  });
+}
+
+let ropC, trqC, presC, vibC, geoC, weekC;
+let ropData, torqData, rpmData, presData, vibData;
+let intervals = [];
+
+function stopIntervals(){ intervals.forEach(clearInterval); intervals=[]; }
+
+function initDash() {
+  ropData  = makeData(1.84, .28);
+  torqData = makeData(184, 18);
+  rpmData  = makeData(720, 35);
+  presData = makeData(142, 10);
+  vibData  = makeData(.42, .1);
+
+  if(ropC){ [ropC,trqC,presC,vibC,geoC,weekC].forEach(c=>c&&c.destroy()); }
+
+  ropC  = mkLine('ropChart',  ropData,  '#00ff9d', 1, 3);
+  presC = mkLine('presChart', presData, '#a78bfa', 120, 165);
+  vibC  = mkLine('vibChart',  vibData,  '#fb7185', 0, 1);
+
+  trqC = new Chart(document.getElementById('trqChart'), {
+    type:'line',
+    data:{
+      labels:makeLbls(),
+      datasets:[
+        {data:[...torqData], borderColor:'#ff6b00', borderWidth:1.5, pointRadius:0, fill:false, tension:.4, yAxisID:'y'},
+        {data:[...rpmData],  borderColor:'#ffd600', borderWidth:1.5, pointRadius:0, fill:false, tension:.4, borderDash:[4,2], yAxisID:'y1'}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:{duration:200},
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#2a4a60',font:{size:8},maxTicksLimit:6,maxRotation:0}, grid:{color:'rgba(0,212,255,0.04)'}},
+        y: {min:130, max:240, ticks:{color:'#2a4a60',font:{size:8}}, grid:{color:'rgba(0,212,255,0.04)'}, position:'left'},
+        y1:{min:600, max:860, ticks:{color:'#2a4a60',font:{size:8}}, grid:{display:false}, position:'right'}
+      }
+    }
+  });
+
+  /* GEO CHART */
+  geoC = new Chart(document.getElementById('geoChart'), {
+    type:'bar',
+    data:{
+      labels:['0–12m','12–48m','48–95m','95–160m','160–210m','210–248m'],
+      datasets:[{
+        label:'Teor Fe%',
+        data:[28,12,18,62,18,68],
+        backgroundColor:['#92400e88','#1e3a5f88','#1e40af88','#991b1b88','#4c1d9588','#7f1d1d88'],
+        borderColor:['#b45309','#1e3a5f','#1e40af','#991b1b','#4c1d95','#991b1b'],
+        borderWidth:1
+      }]
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true, maintainAspectRatio:false, animation:{duration:0},
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{min:0, max:80, ticks:{color:'#2a4a60',font:{size:9}}, grid:{color:'rgba(0,212,255,0.05)'},
+          title:{display:true, text:'Fe (%)', color:'#4a6b80', font:{size:9}}},
+        y:{ticks:{color:'#4a6b80',font:{size:9}}, grid:{display:false}}
+      }
+    }
+  });
+
+  /* WEEK CHART */
+  weekC = new Chart(document.getElementById('weekChart'), {
+    type:'bar',
+    data:{
+      labels:['Seg','Ter','Qua','Qui','Sex','Sáb','Dom*'],
+      datasets:[{
+        label:'Metros perfurados',
+        data:[32.4, 35.1, 28.7, 41.2, 38.9, 29.4, 0],
+        backgroundColor:['#00d4ff22','#00d4ff22','#00d4ff22','#00d4ff44','#00d4ff22','#00d4ff22','#4a6b8022'],
+        borderColor:['#00d4ff','#00d4ff','#00d4ff','#00d4ff','#00d4ff','#00d4ff','#4a6b80'],
+        borderWidth:1
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:{duration:0},
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#4a6b80',font:{size:10}}, grid:{color:'rgba(0,212,255,0.05)'}},
+        y:{ticks:{color:'#4a6b80',font:{size:9}}, grid:{color:'rgba(0,212,255,0.05)'},
+          title:{display:true, text:'Metros', color:'#4a6b80', font:{size:9}}}
+      }
+    }
+  });
+
+  /* ════ DADOS VIVOS ════ */
+  let depthVal=248.6, hoursVal=6*60+42, fuelVal=187, prodVal=28.4;
+  let prevRop=1.84, prevRpm=720, prevTorq=184, prevVib=0.42, prevTemp=68, prevWob=12.4;
+
+  function pushChart(chart, dsIdx, val) {
+    chart.data.datasets[dsIdx].data.push(val);
+    chart.data.datasets[dsIdx].data.shift();
+    chart.data.labels.push('agora');
+    chart.data.labels.shift();
+    chart.update('none');
+  }
+
+  function setEl(id, v) { const el=document.getElementById(id); if(el) el.textContent=v; }
+
+  function trendClass(cur, prev) {
+    if(cur > prev + 0.5) return 'trend-up';
+    if(cur < prev - 0.5) return 'trend-dn';
+    return 'trend-st';
+  }
+  function trendArrow(cur, prev, unit) {
+    const diff = (cur - prev).toFixed(2);
+    if(cur > prev + 0.5) return `▲ +${Math.abs(diff)}`;
+    if(cur < prev - 0.5) return `▼ -${Math.abs(diff)}`;
+    return '— estável';
+  }
+
+  const iv1 = setInterval(() => {
+    const rop  = +rnd(1.84, .25).toFixed(2);
+    const torq = Math.round(rnd(184, 18));
+    const rpm  = Math.round(rnd(720, 35));
+    const pres = Math.round(rnd(142, 10));
+    const vib  = +rnd(.42, .1).toFixed(2);
+    const temp = Math.round(rnd(68, 4));
+    const flow = +rnd(38.2, 2).toFixed(1);
+    const wob  = +rnd(12.4, 1.5).toFixed(1);
+    const mud  = +rnd(1.18, 0.05).toFixed(2);
+
+    depthVal += rop * 0.1 * (1/60);
+    hoursVal += 1/60;
+    fuelVal  += 0.06;
+    prodVal  += rop * 0.1 * (1/60);
+
+    setEl('v-depth', depthVal.toFixed(1));
+    setEl('v-rop',   rop);
+    setEl('v-rpm',   rpm);
+    setEl('v-torque',torq);
+    setEl('v-pres',  pres);
+    setEl('v-flow',  flow);
+    setEl('v-vib',   vib);
+    setEl('v-temp',  temp);
+    setEl('v-wob',   wob);
+    setEl('v-mud',   mud);
+
+    // Trends
+    const tRop = document.getElementById('t-rop');
+    if(tRop){ tRop.textContent = trendArrow(rop,prevRop); tRop.className = 's-trend ' + trendClass(rop,prevRop); }
+    const tRpm = document.getElementById('t-rpm');
+    if(tRpm){ tRpm.textContent = trendArrow(rpm,prevRpm); tRpm.className = 's-trend ' + trendClass(rpm,prevRpm); }
+    const tVib = document.getElementById('t-vib');
+    if(tVib){ tVib.textContent = trendArrow(vib,prevVib); tVib.className = 's-trend ' + trendClass(vib,prevVib); }
+    const tTemp = document.getElementById('t-temp');
+    if(tTemp){ tTemp.textContent = trendArrow(temp,prevTemp); tTemp.className = 's-trend ' + trendClass(temp,prevTemp); }
+
+    prevRop=rop; prevRpm=rpm; prevTorq=torq; prevVib=vib; prevTemp=temp; prevWob=wob;
+
+    const h=Math.floor(hoursVal/60), m=Math.floor(hoursVal%60);
+    const hStr = `${h}h ${String(m).padStart(2,'0')}m`;
+    setEl('v-hours',   hStr);
+    setEl('v-fuel-l',  Math.round(fuelVal)+' L');
+    setEl('v-mprod',   prodVal.toFixed(1)+' m');
+    setEl('rel-metros',prodVal.toFixed(1)+' m');
+    setEl('rel-depth', depthVal.toFixed(1)+' m');
+    setEl('rel-hours', hStr);
+    setEl('rel-fuel',  Math.round(fuelVal)+' L');
+
+    const remain = Math.max(0, 375 - depthVal);
+    setEl('rel-remain', remain.toFixed(1)+' m');
+
+    const pctD = Math.min(Math.round(depthVal/375*100), 100);
+    setEl('pct-depth', pctD+'%');
+    const bd = document.getElementById('bar-depth');
+    if(bd) bd.style.width = pctD+'%';
+    const hb = document.getElementById('hole-bar');
+    if(hb) hb.style.width = pctD+'%';
+    const hma = document.getElementById('hole-meta-active');
+    if(hma) hma.textContent = depthVal.toFixed(1)+' / 375.0 m — EM PROGRESSO';
+
+    const pctF = Math.max(0, Math.round((345-fuelVal)/345*100));
+    setEl('pct-fuel', pctF+'%');
+    const bf = document.getElementById('bar-fuel');
+    if(bf) bf.style.width = pctF+'%';
+
+    const piCpu = document.getElementById('pi-cpu');
+    const piLat = document.getElementById('pi-lat');
+    if(piCpu) piCpu.textContent = Math.round(rnd(34,8))+'%';
+    if(piLat) piLat.textContent = Math.round(rnd(12,5))+' ms';
+
+    const now = new Date();
+    const ts = [now.getHours(),now.getMinutes(),now.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');
+    setEl('alarm-sync', '✓ Último sync: '+ts);
+
+    pushChart(ropC,  0, rop);
+    pushChart(presC, 0, pres);
+    pushChart(vibC,  0, vib);
+    pushChart(trqC,  0, torq);
+    pushChart(trqC,  1, rpm);
+
+    // Alarme dinâmico na lista mini
+    const alarmEl = document.getElementById('alarmListMini');
+    if(alarmEl && pres > 148){
+      const items = alarmEl.querySelectorAll('.alarm-item');
+      if(items[0]) items[0].textContent = `⚠ FEED: pressão CRÍTICA (${pres} bar!)`;
+    } else if(alarmEl) {
+      const items = alarmEl.querySelectorAll('.alarm-item');
+      if(items[0]) items[0].textContent = `⚠ FEED: pressão elevada (${pres} bar)`;
+    }
+  }, 1000);
+
+  const iv2 = setInterval(updateClock, 1000);
+  updateClock();
+  intervals = [iv1, iv2];
+  mInit();
+}
+
+/* ═══════════════════════════════════════════════════
+   MÓDULO DE MANUTENÇÃO CS14
+═══════════════════════════════════════════════════ */
+let mPecas = [];
+let mSubs  = [];
+let mNotifs= [];
+
+function mInit(){
+  try{
+    mPecas  = JSON.parse(localStorage.getItem('cs14_pecas')||'[]');
+    mSubs   = JSON.parse(localStorage.getItem('cs14_subs') ||'[]');
+    mNotifs = JSON.parse(localStorage.getItem('cs14_notifs')||'[]');
+  }catch(e){mPecas=[];mSubs=[];mNotifs=[];}
+  const today = mHoje();
+  const nowH  = new Date();
+  document.getElementById('cData').value  = today;
+  document.getElementById('sData').value  = today;
+  document.getElementById('sHora').value  = String(nowH.getHours()).padStart(2,'0')+':'+String(nowH.getMinutes()).padStart(2,'0');
+  mRenderDash();
+  mRenderTabPecas();
+  mRenderTabSubs();
+}
+
+/* ── Sub-tab switching ── */
+function mSwitchTab(id, el){
+  document.querySelectorAll('#pageMaint .mscreen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('#pageMaint .mtab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+  if(id==='mSub')   mPopularSelectAntigas();
+  if(id==='mHist')  mRenderHist();
+  if(id==='mNotif') mRenderNotifList();
+  if(id==='mRel')   mRenderRel();
+}
+
+/* ── Persistência ── */
+function mSalvar(){
+  localStorage.setItem('cs14_pecas',  JSON.stringify(mPecas));
+  localStorage.setItem('cs14_subs',   JSON.stringify(mSubs));
+  localStorage.setItem('cs14_notifs', JSON.stringify(mNotifs));
+}
+
+/* ── Utils ── */
+function mHoje(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function mFmt(str){
+  if(!str) return '—';
+  const p=str.split('-');
+  return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:str;
+}
+function mBadgeStatus(s){
+  if(s==='Ativa')          return '<span class="mbadge mb-ativa">ATIVA</span>';
+  if(s==='Em Manutenção')  return '<span class="mbadge mb-manut">MANUTENÇÃO</span>';
+  return '<span class="mbadge mb-sub">SUBSTITUÍDA</span>';
+}
+function mBadgeMotivo(m){
+  if(m==='Falha')     return '<span class="mbadge mb-falha">FALHA</span>';
+  if(m==='Desgaste')  return '<span class="mbadge mb-desg">DESGASTE</span>';
+  return '<span class="mbadge mb-prev">PREVENTIVA</span>';
+}
+function mBadgeDestino(d){
+  if(d==='Estoque')    return '<span class="mbadge mb-estoque">ESTOQUE</span>';
+  if(d==='Descarte')   return '<span class="mbadge mb-descarte">DESCARTE</span>';
+  if(d==='Calibração') return '<span class="mbadge mb-calib">CALIBRAÇÃO</span>';
+  return '<span class="mbadge mb-manut">MANUTENÇÃO</span>';
+}
+function mToast(msg, color){
+  color = color || 'var(--c3)';
+  const area = document.getElementById('mNotifArea');
+  const div  = document.createElement('div');
+  div.style.cssText = `background:var(--bg2);border:.5px solid ${color};border-radius:5px;padding:8px 12px;font-family:'Share Tech Mono',monospace;font-size:9px;color:${color};animation:notif 3s ease forwards;letter-spacing:1px;`;
+  div.textContent = msg;
+  area.appendChild(div);
+  setTimeout(()=>div.remove(), 3200);
+}
+
+/* ── Cadastro ── */
+function mCadastrar(){
+  const nome  = document.getElementById('cNome').value.trim();
+  const id    = document.getElementById('cId').value.trim();
+  const local = document.getElementById('cLocal').value;
+  const stat  = document.getElementById('cStatus').value;
+  const data  = document.getElementById('cData').value;
+  const obs   = document.getElementById('cObs').value.trim();
+  if(!nome||!id||!local){mToast('⚠ Preencha Nome, Código e Local.','var(--c6)');return;}
+  if(mPecas.find(p=>p.id===id)){mToast('⚠ Código já cadastrado.','var(--c6)');return;}
+  mPecas.push({nome,id,local,status:stat,dataInst:data||mHoje(),obs,trocas:0,historico:[]});
+  mSalvar(); mRenderDash(); mRenderTabPecas(); mLimparCad();
+  mToast('✔ Peça cadastrada: '+id);
+}
+function mLimparCad(){
+  ['cNome','cId','cObs'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('cLocal').value='';
+  document.getElementById('cStatus').value='Ativa';
+  document.getElementById('cData').value=mHoje();
+}
+function mFiltrarPecas(){ mRenderTabPecas(document.getElementById('mSearchPecas').value.toLowerCase()); }
+function mRenderTabPecas(filtro){
+  filtro = filtro||'';
+  const tbody = document.getElementById('mtblPecas');
+  const lista = mPecas.filter(p=>
+    p.nome.toLowerCase().includes(filtro)||p.id.toLowerCase().includes(filtro)||p.local.toLowerCase().includes(filtro)
+  );
+  if(!lista.length){tbody.innerHTML='<tr><td colspan="7" class="mempty">Nenhuma peça encontrada.</td></tr>';return;}
+  tbody.innerHTML = lista.map(p=>`
+    <tr>
+      <td style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--c1);">${p.id}</td>
+      <td>${p.nome}</td>
+      <td style="color:var(--dim);font-size:11px;">${p.local}</td>
+      <td>${mBadgeStatus(p.status)}</td>
+      <td style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);">${mFmt(p.dataInst)}</td>
+      <td style="text-align:center;font-family:'Orbitron',monospace;color:${p.trocas>2?'var(--c6)':p.trocas>0?'var(--c4)':'var(--dim)'};">${p.trocas}</td>
+      <td>
+        <button class="mbtn mbtn-p" style="padding:3px 8px;font-size:8px;" onclick="mVerDetalhe('${p.id}')">VER</button>
+        <button class="mbtn mbtn-d" style="padding:3px 8px;font-size:8px;" onclick="mRemover('${p.id}')">✕</button>
+      </td>
+    </tr>
+  `).join('');
+}
+function mRemover(id){
+  if(!confirm('Remover peça '+id+'?')) return;
+  mPecas = mPecas.filter(p=>p.id!==id);
+  mSalvar(); mRenderTabPecas(); mRenderDash();
+}
+function mVerDetalhe(id){
+  const p = mPecas.find(x=>x.id===id);
+  if(!p) return;
+  document.getElementById('mmTitle').textContent = p.nome+' — '+p.id;
+  document.getElementById('mmBody').innerHTML = `
+    <div style="margin-bottom:10px;">${mBadgeStatus(p.status)} <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);margin-left:8px;">${p.local}</span></div>
+    <div class="maint-log-detail" style="margin-bottom:10px;"><strong>Instalação:</strong> ${mFmt(p.dataInst)} &nbsp;|&nbsp; <strong>Trocas:</strong> ${p.trocas}${p.obs?'<br><strong>Obs:</strong> '+p.obs:''}</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);margin-bottom:8px;letter-spacing:1px;">MOVIMENTAÇÕES</div>
+    ${p.historico.length?p.historico.map(h=>`
+      <div class="maint-log ${h.motivo==='Falha'?'ml-fail':h.motivo==='Desgaste'?'ml-desg':'ml-prev'}">
+        <div class="maint-log-meta">${h.data} ${h.hora} — ${h.motivo}</div>
+        <div class="maint-log-detail">
+          <strong>Nova:</strong> ${h.novaNome} (${h.novaId}) &nbsp;|&nbsp; <strong>Técnico:</strong> ${h.tecnico}<br>
+          <strong>Destino:</strong> ${h.destino}${h.obs?'  |  <strong>Obs:</strong> '+h.obs:''}
+        </div>
+      </div>`).join(''):'<div class="mempty" style="padding:16px;">Sem movimentações</div>'}
+  `;
+  document.getElementById('maintModal').classList.remove('hidden');
+}
+function mCloseModal(){ document.getElementById('maintModal').classList.add('hidden'); }
+
+/* ── Substituição ── */
+function mPopularSelectAntigas(){
+  const sel = document.getElementById('sAntiga');
+  sel.innerHTML = '<option value="">Selecionar...</option>';
+  mPecas.filter(p=>p.status!=='Substituída').forEach(p=>{
+    sel.innerHTML += `<option value="${p.id}">[${p.id}] ${p.nome} — ${p.local}</option>`;
+  });
+}
+function mPreencherLocal(){
+  const id = document.getElementById('sAntiga').value;
+  const p  = mPecas.find(x=>x.id===id);
+  document.getElementById('sLocal').value = p?p.local:'';
+}
+function mRegistrarSub(){
+  const antigaId  = document.getElementById('sAntiga').value;
+  const motivo    = document.getElementById('sMotivo').value;
+  const novaNome  = document.getElementById('sNovaNome').value.trim();
+  const novaId    = document.getElementById('sNovaId').value.trim();
+  const local     = document.getElementById('sLocal').value.trim();
+  const destino   = document.getElementById('sDestino').value;
+  const tecnico   = document.getElementById('sTecnico').value.trim();
+  const data      = document.getElementById('sData').value;
+  const hora      = document.getElementById('sHora').value;
+  const obs       = document.getElementById('sObs').value.trim();
+  if(!antigaId||!motivo||!novaNome||!novaId||!destino||!tecnico||!data||!hora){
+    mToast('⚠ Preencha todos os campos obrigatórios (*)','var(--c6)');return;
+  }
+  if(mPecas.find(p=>p.id===novaId)){mToast('⚠ Código da nova peça já existe','var(--c6)');return;}
+  const antiga = mPecas.find(p=>p.id===antigaId);
+  antiga.status='Substituída'; antiga.trocas++;
+  antiga.historico.push({data,hora,motivo,novaNome,novaId,tecnico,destino,obs});
+  mPecas.push({nome:novaNome,id:novaId,local,status:'Ativa',dataInst:data,obs:'',trocas:0,historico:[]});
+  const entry = {antigaNome:antiga.nome,antigaId,novaNome,novaId,local,motivo,destino,tecnico,data,hora,obs};
+  mSubs.unshift(entry);
+  const notif = {...entry, dataFmt:mFmt(data), ts:Date.now()};
+  mNotifs.unshift(notif);
+  mSalvar(); mRenderDash(); mRenderTabPecas(); mRenderTabSubs();
+  mMostrarNotifFlutuante(notif); mLimparSub(); mPopularSelectAntigas();
+  mToast('✔ Substituição registrada com sucesso!');
+}
+function mLimparSub(){
+  ['sNovaNome','sNovaId','sLocal','sTecnico','sObs'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('sAntiga').value='';
+  document.getElementById('sMotivo').value='';
+  document.getElementById('sDestino').value='';
+  document.getElementById('sData').value=mHoje();
+  const n=new Date();
+  document.getElementById('sHora').value=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');
+}
+function mRenderTabSubs(){
+  const tbody = document.getElementById('mtblSubs');
+  if(!mSubs.length){tbody.innerHTML='<tr><td colspan="7" class="mempty">Nenhuma substituição.</td></tr>';return;}
+  tbody.innerHTML = mSubs.map(s=>`
+    <tr>
+      <td style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);">${mFmt(s.data)} ${s.hora}</td>
+      <td><span style="color:var(--c6);font-size:12px;">${s.antigaNome}</span><br><span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);">${s.antigaId}</span></td>
+      <td><span style="color:var(--c3);font-size:12px;">${s.novaNome}</span><br><span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);">${s.novaId}</span></td>
+      <td style="color:var(--dim);font-size:11px;">${s.local}</td>
+      <td>${mBadgeMotivo(s.motivo)}</td>
+      <td>${mBadgeDestino(s.destino)}</td>
+      <td style="font-size:11px;">${s.tecnico}</td>
+    </tr>`).join('');
+}
+
+/* ── Histórico ── */
+function mFiltrarHist(){ mRenderHist(document.getElementById('mSearchHist').value.toLowerCase()); }
+function mRenderHist(filtro){
+  filtro=filtro||'';
+  const el = document.getElementById('mHistList');
+  const lista = mPecas.filter(p=>
+    p.historico.length>0&&(p.nome.toLowerCase().includes(filtro)||p.id.toLowerCase().includes(filtro))
+  );
+  if(!lista.length){el.innerHTML='<div class="mempty"><div class="mempty-ico">📘</div>Nenhuma movimentação registrada.</div>';return;}
+  el.innerHTML = lista.map(p=>`
+    <div class="maint-card" style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div><span style="font-size:14px;font-weight:600;">${p.nome}</span> <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--c1);">${p.id}</span></div>
+        <div style="text-align:right;">${mBadgeStatus(p.status)}<div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);margin-top:2px;">${p.local}</div></div>
+      </div>
+      <div style="display:flex;gap:18px;margin-bottom:10px;font-family:'Share Tech Mono',monospace;font-size:9px;">
+        <div><div style="color:var(--dim);">SUBSTITUIÇÕES</div><div style="color:var(--c1);font-size:15px;font-family:'Orbitron',monospace;">${p.trocas}</div></div>
+        <div><div style="color:var(--dim);">INSTALAÇÃO</div><div style="color:var(--text);">${mFmt(p.dataInst)}</div></div>
+      </div>
+      ${p.historico.map(h=>`
+        <div class="maint-log ${h.motivo==='Falha'?'ml-fail':h.motivo==='Desgaste'?'ml-desg':'ml-prev'}">
+          <div class="maint-log-meta">${h.data} às ${h.hora} — ${mBadgeMotivo(h.motivo)}</div>
+          <div class="maint-log-detail">
+            <strong>Nova:</strong> ${h.novaNome} <span style="color:var(--c1);">(${h.novaId})</span><br>
+            <strong>Técnico:</strong> ${h.tecnico} &nbsp;|&nbsp; <strong>Destino:</strong> ${mBadgeDestino(h.destino)}
+            ${h.obs?'<br><strong>Obs:</strong> '+h.obs:''}
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+/* ── Notificações ── */
+function mRenderNotifList(){
+  const el = document.getElementById('mNotifList');
+  if(!mNotifs.length){el.innerHTML='<div class="mempty"><div class="mempty-ico">📢</div>Nenhuma notificação.</div>';return;}
+  el.innerHTML = mNotifs.map(n=>`
+    <div class="notif-full-card">
+      <div class="nfh">📢 NOTIFICAÇÃO DE MANUTENÇÃO – CS 14</div>
+      <div class="nfr">• Peça removida: <span>${n.antigaNome} — ${n.antigaId}</span></div>
+      <div class="nfr">• Peça instalada: <span>${n.novaNome} — ${n.novaId}</span></div>
+      <div class="nfr">• Local da sonda: <span>${n.local}</span></div>
+      <div class="nfr">• Motivo: <span>${n.motivo}</span></div>
+      <div class="nfr">• Destino da peça antiga: <span>${n.destino}</span></div>
+      <div class="nfr">• Data e hora: <span>${n.dataFmt||mFmt(n.data)} – ${n.hora}</span></div>
+      <div class="nfr">• Técnico responsável: <span>${n.tecnico}</span></div>
+      ${n.obs?`<div class="nfr">• Observações: <span>${n.obs}</span></div>`:''}
+    </div>`).join('');
+}
+function mMostrarNotifFlutuante(n){
+  const area = document.getElementById('mNotifArea');
+  const div  = document.createElement('div');
+  div.className = 'mnotif-card';
+  div.innerHTML = `
+    <div class="mnotif-title">📢 MANUTENÇÃO – CS 14</div>
+    <div class="mnotif-row">REMOVIDA: <span>${n.antigaId}</span></div>
+    <div class="mnotif-row">INSTALADA: <span>${n.novaId}</span></div>
+    <div class="mnotif-row">MOTIVO: <span>${n.motivo}</span></div>
+    <div class="mnotif-row">TÉCNICO: <span>${n.tecnico}</span></div>`;
+  area.appendChild(div);
+  setTimeout(()=>div.remove(), 5400);
+}
+
+/* ── Dashboard ── */
+function mRenderDash(){
+  const ativas = mPecas.filter(p=>p.status==='Ativa').length;
+  const manut  = mPecas.filter(p=>p.status==='Em Manutenção').length;
+  const total  = mSubs.length;
+  const agora  = new Date();
+  const mesAtual = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}`;
+  const mes = mSubs.filter(s=>s.data.startsWith(mesAtual)).length;
+
+  const sv = (id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+  sv('mkpi-ativas',ativas); sv('mkpi-manut',manut); sv('mkpi-subs',total); sv('mkpi-mes',mes);
+
+  // Falhas
+  const porPeca={};
+  mSubs.filter(s=>s.motivo==='Falha').forEach(s=>{porPeca[s.antigaNome]=(porPeca[s.antigaNome]||0)+1;});
+  const sorted=Object.entries(porPeca).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const maxF=Math.max(...Object.values(porPeca),1);
+  const fEl=document.getElementById('mdash-falhas');
+  if(fEl) fEl.innerHTML=sorted.length?sorted.map(([n,c])=>`
+    <div class="maint-bar-row"><div class="maint-bar-label" title="${n}">${n}</div>
+    <div class="maint-bar-track"><div class="maint-bar-fill" style="background:var(--c6);width:${c/maxF*100}%"></div></div>
+    <div class="maint-bar-val" style="color:var(--c6);">${c}</div></div>`).join('')
+    :'<div class="mempty" style="padding:14px;">Nenhuma falha registrada</div>';
+
+  // Últimas subs
+  const uEl=document.getElementById('mdash-ultimas');
+  if(uEl) uEl.innerHTML=mSubs.slice(0,5).map(s=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:.5px solid var(--border);">
+      <div><div style="font-size:12px;">${s.novaNome}</div><div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);">${s.novaId} → ${s.local}</div></div>
+      <div style="text-align:right;">${mBadgeMotivo(s.motivo)}<div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);margin-top:2px;">${mFmt(s.data)}</div></div>
+    </div>`).join('')||'<div class="mempty" style="padding:14px;">Sem substituições</div>';
+
+  // Locais
+  const locMap={};
+  mPecas.forEach(p=>{locMap[p.local]=locMap[p.local]||{a:0,t:0};locMap[p.local].t++;if(p.status==='Ativa')locMap[p.local].a++;});
+  const lEl=document.getElementById('mdash-locais');
+  if(lEl) lEl.innerHTML=Object.entries(locMap).map(([loc,v])=>`
+    <div style="background:var(--bg3);border:.5px solid var(--border);border-radius:5px;padding:10px;">
+      <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:1px;margin-bottom:5px;">${loc.toUpperCase()}</div>
+      <div style="display:flex;gap:10px;font-family:'Orbitron',monospace;">
+        <div><div style="font-size:18px;color:var(--c3);">${v.a}</div><div style="font-family:'Share Tech Mono',monospace;font-size:7px;color:var(--dim);">ATIVAS</div></div>
+        <div><div style="font-size:18px;color:var(--dim);">${v.t}</div><div style="font-family:'Share Tech Mono',monospace;font-size:7px;color:var(--dim);">TOTAL</div></div>
+      </div>
+    </div>`).join('')||'<div class="mempty">Cadastre peças para ver o status por local.</div>';
+}
+
+/* ── Relatório ── */
+function mRenderRel(){
+  const ativas=mPecas.filter(p=>p.status==='Ativa').length;
+  const manut=mPecas.filter(p=>p.status==='Em Manutenção').length;
+  const sub=mPecas.filter(p=>p.status==='Substituída').length;
+  const agora=new Date();
+  const mesAtual=`${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}`;
+  const mes=mSubs.filter(s=>s.data.startsWith(mesAtual)).length;
+
+  document.getElementById('mRelKpis').innerHTML=`
+    <div class="maint-kpi mk-ok"><div class="maint-kpi-val">${ativas}</div><div class="maint-kpi-lbl">PEÇAS ATIVAS</div></div>
+    <div class="maint-kpi mk-warn"><div class="maint-kpi-val">${manut}</div><div class="maint-kpi-lbl">EM MANUTENÇÃO</div></div>
+    <div class="maint-kpi"><div class="maint-kpi-val">${sub}</div><div class="maint-kpi-lbl">SUBSTITUÍDAS</div></div>
+    <div class="maint-kpi mk-err"><div class="maint-kpi-val">${mes}</div><div class="maint-kpi-lbl">TROCAS NO MÊS</div></div>`;
+
+  const porPeca={};
+  mSubs.filter(s=>s.motivo==='Falha').forEach(s=>{const k=s.antigaNome+'|'+s.antigaId;porPeca[k]=(porPeca[k]||0)+1;});
+  const maxF=Math.max(...Object.values(porPeca),1);
+  document.getElementById('mRelFalhas').innerHTML=Object.entries(porPeca).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`
+    <div class="maint-bar-row"><div class="maint-bar-label">${k.split('|')[0]}</div>
+    <div class="maint-bar-track"><div class="maint-bar-fill" style="background:var(--c6);width:${n/maxF*100}%"></div></div>
+    <div class="maint-bar-val" style="color:var(--c6);">${n}</div></div>`).join('')||'<div class="mempty">Sem falhas</div>';
+
+  const porLocal={};
+  mSubs.forEach(s=>{porLocal[s.local]=(porLocal[s.local]||0)+1;});
+  const maxL=Math.max(...Object.values(porLocal),1);
+  document.getElementById('mRelLocais').innerHTML=Object.entries(porLocal).sort((a,b)=>b[1]-a[1]).map(([loc,n])=>`
+    <div class="maint-bar-row"><div class="maint-bar-label">${loc}</div>
+    <div class="maint-bar-track"><div class="maint-bar-fill" style="background:var(--c2);width:${n/maxL*100}%"></div></div>
+    <div class="maint-bar-val" style="color:var(--c2);">${n}</div></div>`).join('')||'<div class="mempty">Sem dados</div>';
+
+  const porMes={};
+  mSubs.forEach(s=>{const m=s.data.substring(0,7);porMes[m]=(porMes[m]||0)+1;});
+  const maxM=Math.max(...Object.values(porMes),1);
+  document.getElementById('mRelMes').innerHTML=Object.entries(porMes).sort().map(([m,n])=>`
+    <div class="maint-bar-row"><div class="maint-bar-label">${m}</div>
+    <div class="maint-bar-track"><div class="maint-bar-fill" style="width:${n/maxM*100}%"></div></div>
+    <div class="maint-bar-val">${n}</div></div>`).join('')||'<div class="mempty">Sem dados</div>';
+}
+</script>
+</body>
+</html>
