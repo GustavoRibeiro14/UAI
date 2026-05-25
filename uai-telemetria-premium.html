@@ -1,0 +1,1443 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>UAI Telemetria - Plataforma Premium de Telemetria</title>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.164.1/build/three.module.js"}}</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Barlow+Condensed:wght@300;400;600;700;800&display=swap');
+
+:root{
+  --bg:#f3f6fa;
+  --bg2:#e8eef6;
+  --navy:#0b2a4a;
+  --navy2:#123b66;
+  --red:#d73636;
+  --red2:#a91f2f;
+  --panel:rgba(255,255,255,0.82);
+  --panel-dark:rgba(9,28,50,0.94);
+  --border:rgba(11,42,74,0.16);
+  --border2:rgba(11,42,74,0.32);
+  --cyan:#0b4f8f;
+  --cyan2:#1c75bc;
+  --blue:#0b58a2;
+  --accent:#d73636;
+  --warn:#f39c12;
+  --danger:#d73636;
+  --ok:#16a765;
+  --text:#10233d;
+  --muted:#60748b;
+  --glow:rgba(11,42,74,0.18);
+  font-family:'Barlow Condensed',sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
+body{
+  background:
+    linear-gradient(120deg,rgba(11,42,74,0.08),rgba(215,54,54,0.03)),
+    radial-gradient(circle at 12% 8%,rgba(11,79,143,0.16),transparent 28%),
+    var(--bg);
+}
+
+/* ── LOGIN ─────────────────────────────────────────── */
+#login-screen{
+  position:fixed;inset:0;z-index:999;
+  display:flex;align-items:center;justify-content:center;
+  background:
+    radial-gradient(ellipse at 30% 20%,rgba(28,117,188,0.24),transparent 55%),
+    radial-gradient(ellipse at 80% 80%,rgba(215,54,54,0.16),transparent 45%),
+    linear-gradient(135deg,#06182b,#0b2a4a 48%,#081a2e);
+}
+#login-screen::before{
+  content:'';
+  position:absolute;inset:0;
+  background:
+    linear-gradient(90deg,rgba(255,255,255,0.04) 1px,transparent 1px),
+    linear-gradient(rgba(255,255,255,0.04) 1px,transparent 1px),
+    url('SONDA.png') right 4% bottom 8%/min(72vw,980px) auto no-repeat;
+  background-size:54px 54px,54px 54px,min(72vw,980px) auto;
+  opacity:.34;
+}
+#login-screen::after{
+  content:'';
+  position:absolute;inset:-12%;
+  background:
+    repeating-radial-gradient(ellipse at 22% 28%,transparent 0 22px,rgba(255,255,255,.08) 23px,transparent 25px),
+    linear-gradient(110deg,transparent 0 40%,rgba(28,117,188,.24) 48%,transparent 56%);
+  animation:loginScan 12s linear infinite;
+  opacity:.55;
+}
+@keyframes loginScan{to{transform:translate3d(4%,3%,0)}}
+.login-box{
+  width:min(440px,calc(100vw - 32px));padding:44px 40px;
+  background:rgba(246,249,252,0.9);
+  border:1px solid rgba(255,255,255,.55);
+  border-radius:8px;
+  box-shadow:0 0 0 1px rgba(11,42,74,.2),0 40px 90px rgba(0,0,0,0.42);
+  position:relative;overflow:hidden;
+  backdrop-filter:blur(18px);
+  z-index:1;
+}
+.login-box::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--cyan2),var(--red),transparent);
+}
+.login-logo{text-align:center;margin-bottom:28px;animation:logoRise .9s ease both}
+@keyframes logoRise{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:none}}
+.login-logo-mark{
+  width:76px;height:76px;margin:0 auto 14px;border-radius:20px;
+  background:linear-gradient(145deg,var(--navy),var(--navy2));
+  display:grid;place-items:center;
+  box-shadow:0 18px 34px rgba(11,42,74,.22),inset 0 0 0 1px rgba(255,255,255,.18);
+}
+.login-logo-mark svg{width:54px;height:54px}
+.login-logo .brand{font-family:'Rajdhani',sans-serif;font-size:2.36rem;font-weight:700;letter-spacing:.08em;color:var(--navy)}
+.login-logo .brand span{color:var(--red)}
+.login-logo .sub{font-size:.78rem;letter-spacing:.22em;color:var(--muted);margin-top:4px}
+.login-badge{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;
+  border:1px solid rgba(11,42,74,.18);border-radius:999px;font-size:.7rem;color:var(--navy);
+  background:rgba(255,255,255,0.56);margin-bottom:24px}
+.login-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.field{margin-bottom:18px}
+.field label{display:block;font-size:.72rem;letter-spacing:.14em;color:var(--muted);margin-bottom:8px}
+.field input{
+  width:100%;padding:12px 14px;
+  background:rgba(255,255,255,0.72);
+  border:1px solid rgba(11,42,74,.18);
+  border-radius:6px;color:var(--navy);font-family:inherit;font-size:1rem;
+  transition:border-color .2s,box-shadow .2s;
+}
+.field input:focus{outline:none;border-color:var(--cyan2);box-shadow:0 0 0 3px rgba(28,117,188,0.16),0 0 22px rgba(28,117,188,.22)}
+.login-btn{
+  width:100%;padding:14px;margin-top:8px;
+  background:linear-gradient(90deg,var(--navy),var(--cyan2) 62%,var(--red));
+  border:0;border-radius:6px;
+  font-family:'Rajdhani',sans-serif;font-size:1.1rem;font-weight:700;
+  letter-spacing:.1em;color:#fff;cursor:pointer;
+  transition:transform .2s,box-shadow .2s,filter .2s;
+}
+.login-btn:hover{transform:translateY(-1px);filter:saturate(1.08);box-shadow:0 16px 28px rgba(11,42,74,0.25)}
+.login-links{display:flex;justify-content:space-between;margin-top:16px;font-size:.73rem;color:var(--muted)}
+.login-links a{color:var(--cyan);text-decoration:none}
+.login-extra{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin:0 0 8px;font-size:.76rem;color:var(--muted);
+}
+.login-extra label{display:flex;align-items:center;gap:8px;cursor:pointer}
+.login-extra input{accent-color:var(--navy)}
+.future-login{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.future-login button{
+  padding:9px 10px;border:1px solid rgba(11,42,74,.18);border-radius:6px;
+  background:rgba(255,255,255,.58);color:var(--navy);font:inherit;font-size:.72rem;letter-spacing:.07em;
+}
+.login-error{display:none;margin-top:12px;padding:10px;background:rgba(255,60,90,0.1);
+  border:1px solid rgba(255,60,90,0.3);border-radius:2px;color:#ff8fa0;font-size:.8rem;text-align:center}
+
+/* ── APP ───────────────────────────────────────────── */
+#app{display:none;flex-direction:column;height:100vh;width:100vw;overflow:hidden}
+
+/* TOPBAR */
+.topbar{
+  height:60px;flex:0 0 60px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;
+  background:linear-gradient(90deg,var(--navy),#0f345b 58%,#142d49);
+  border-bottom:1px solid rgba(255,255,255,.14);
+  box-shadow:0 12px 26px rgba(11,42,74,.16);
+  position:relative;z-index:50;color:#fff;
+}
+.topbar-logo{font-family:'Rajdhani',sans-serif;font-size:1.35rem;font-weight:700;letter-spacing:.1em}
+.topbar-logo{color:#fff}
+.topbar-logo span{color:#ff5b5b}
+.topbar-right{display:flex;align-items:center;gap:14px}
+.status-pill{display:flex;align-items:center;gap:6px;padding:4px 10px;
+  border:1px solid rgba(255,255,255,.16);border-radius:999px;font-size:.7rem;letter-spacing:.06em;color:inherit;
+  background:rgba(255,255,255,.08);backdrop-filter:blur(10px)}
+.dot{width:7px;height:7px;border-radius:50%}
+.dot.ok{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.dot.warn{background:var(--warn);box-shadow:0 0 8px var(--warn)}
+.user-pill{display:flex;align-items:center;gap:8px;padding:4px 12px;
+  background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,.18);border-radius:999px;
+  font-size:.78rem;cursor:pointer}
+.user-pip{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--cyan2));
+  display:grid;place-items:center;font-weight:700;font-size:.7rem;color:#fff}
+
+/* NAV TABS */
+.nav-tabs{
+  display:flex;align-items:center;gap:0;
+  background:rgba(255,255,255,0.82);
+  border-bottom:1px solid var(--border);
+  padding:0 20px;flex:0 0 46px;backdrop-filter:blur(16px);
+  overflow-x:auto;
+}
+.nav-tab{
+  padding:0 20px;height:42px;display:flex;align-items:center;
+  font-size:.82rem;letter-spacing:.1em;font-weight:600;
+  color:var(--muted);border:0;background:transparent;cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;
+}
+.nav-tab.active{color:var(--navy);border-bottom-color:var(--red);background:linear-gradient(180deg,rgba(11,42,74,.08),transparent)}
+.nav-tab:hover:not(.active){color:var(--text)}
+
+/* MAIN CONTENT */
+.main-content{flex:1;overflow:hidden;position:relative}
+.main-content::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:
+    linear-gradient(90deg,rgba(11,42,74,.035) 1px,transparent 1px),
+    linear-gradient(rgba(11,42,74,.035) 1px,transparent 1px);
+  background-size:36px 36px;
+}
+.tab-view{display:none;position:absolute;inset:0;overflow:hidden}
+.tab-view.active{display:flex}
+
+/* ── PAINEL GERAL ──────────────────────────────────── */
+#tab-overview{flex-direction:column;gap:0;overflow:hidden}
+.probes-header{
+  padding:14px 20px 10px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex:0 0 auto;
+}
+.probes-header h2{font-size:1rem;font-weight:700;letter-spacing:.1em;color:var(--navy)}
+.probes-header small{font-size:.72rem;color:var(--muted)}
+.probes-grid{
+  flex:1;overflow-y:auto;
+  padding:0 20px 16px;
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(340px,1fr));
+  gap:14px;
+  align-content:start;
+}
+.probes-grid::-webkit-scrollbar{width:4px}
+.probes-grid::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+.probe-card{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:8px;
+  overflow:hidden;
+  box-shadow:0 14px 36px rgba(11,42,74,.08);
+  backdrop-filter:blur(14px);
+  transition:border-color .2s,box-shadow .2s;
+  cursor:pointer;
+}
+.probe-card:hover{border-color:var(--border2);box-shadow:0 0 20px var(--glow)}
+.probe-card.alert-card{border-color:rgba(255,80,0,0.4)}
+.probe-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px 10px;
+  border-bottom:1px solid var(--border);
+}
+.probe-head-left{display:flex;align-items:center;gap:10px}
+.probe-icon{
+  width:32px;height:32px;border-radius:2px;
+  display:grid;place-items:center;flex:0 0 32px;
+  font-size:1rem;font-weight:900;
+}
+.probe-name{font-size:.95rem;font-weight:700;letter-spacing:.06em;color:var(--navy)}
+.probe-id{font-size:.66rem;letter-spacing:.1em;color:var(--muted)}
+.probe-status{
+  display:flex;align-items:center;gap:5px;
+  font-size:.7rem;letter-spacing:.07em;padding:3px 8px;
+  border-radius:2px;border:1px solid currentColor;
+}
+.probe-status.operando{color:var(--ok);background:rgba(0,232,143,0.08)}
+.probe-status.parado{color:var(--muted);background:rgba(90,138,170,0.08)}
+.probe-status.manutencao{color:var(--warn);background:rgba(255,154,0,0.08)}
+
+.probe-metrics{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  padding:10px 14px;gap:2px;
+}
+.pm{padding:6px 4px;text-align:center}
+.pm-val{display:block;font-family:'JetBrains Mono',monospace;font-size:.92rem;font-weight:700;color:var(--navy)}
+.pm-lbl{display:block;font-size:.6rem;letter-spacing:.08em;color:var(--muted);margin-top:2px}
+
+.probe-bars{padding:0 14px 10px;display:grid;gap:5px}
+.pbar{position:relative;height:20px;background:rgba(11,42,74,0.06);border-radius:999px;overflow:hidden}
+.pbar-fill{position:absolute;inset-y:0;left:0;border-radius:999px;transition:width .8s ease;opacity:.88}
+.pbar-lbl{position:absolute;left:7px;top:50%;transform:translateY(-50%);font-size:.6rem;letter-spacing:.08em;z-index:1;color:var(--navy);font-weight:700}
+.pbar-val{position:absolute;right:7px;top:50%;transform:translateY(-50%);font-family:'JetBrains Mono',monospace;font-size:.6rem;z-index:1;color:var(--navy);font-weight:700}
+
+.probe-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 14px;border-top:1px solid var(--border);
+  font-size:.68rem;color:var(--muted);
+}
+.probe-alert{display:flex;align-items:center;gap:5px;color:var(--warn)}
+.probe-alert::before{content:'⚠';font-size:.7rem}
+
+/* ── GPS MAP ───────────────────────────────────────── */
+#tab-gps{flex-direction:row;overflow:hidden}
+.map-container{flex:1;position:relative;overflow:hidden}
+.map-bg{
+  position:absolute;inset:0;
+  background:
+    radial-gradient(circle at 38% 50%,rgba(71,116,78,0.72),transparent 38%),
+    radial-gradient(circle at 75% 30%,rgba(104,91,61,0.42),transparent 35%),
+    radial-gradient(circle at 20% 80%,rgba(41,82,93,0.42),transparent 30%),
+    linear-gradient(145deg,#234635,#162d3b 48%,#4a4030);
+}
+.map-grid{
+  position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(0,140,255,0.07) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,140,255,0.07) 1px,transparent 1px);
+  background-size:60px 60px;
+  animation:gridDrift 12s linear infinite;
+}
+@keyframes gridDrift{to{background-position:60px 60px}}
+.map-contour{
+  position:absolute;inset:0;
+  background-image:
+    repeating-radial-gradient(ellipse 300px 180px at 35% 60%,transparent 0 22px,rgba(255,255,255,.12) 23px,transparent 25px),
+    repeating-radial-gradient(ellipse 220px 250px at 70% 35%,transparent 0 20px,rgba(255,255,255,.1) 21px,transparent 23px),
+    radial-gradient(ellipse 150px 100px at 15% 25%,rgba(80,50,0,0.25),transparent);
+  mix-blend-mode:screen;
+  opacity:.88;
+}
+.map-roads{position:absolute;inset:0;overflow:hidden}
+.road{position:absolute;background:rgba(180,200,220,0.12);border-radius:2px}
+.road.h1{top:38%;left:0;right:0;height:3px;transform:rotate(-2deg)}
+.road.h2{top:62%;left:5%;right:10%;height:2px;transform:rotate(1deg)}
+.road.v1{left:28%;top:0;bottom:0;width:3px;transform:rotate(3deg)}
+.road.v2{right:22%;top:10%;bottom:5%;width:2px;transform:rotate(-1deg)}
+.road.diag{top:10%;left:40%;width:3px;height:55%;transform:rotate(18deg)}
+
+.geofence-area{
+  position:absolute;
+  border:2px dashed rgba(255,154,0,0.7);
+  border-radius:4px;
+  background:rgba(255,154,0,0.04);
+  box-shadow:0 0 24px rgba(255,154,0,0.15),inset 0 0 20px rgba(255,154,0,0.04);
+}
+.gf1{top:20%;left:18%;width:45%;height:42%;transform:rotate(-4deg)}
+.gf2{top:52%;left:50%;width:32%;height:32%;transform:rotate(3deg)}
+
+.map-probe-pin{
+  position:absolute;transform:translate(-50%,-100%);
+  display:flex;flex-direction:column;align-items:center;
+  cursor:pointer;transition:transform .3s;z-index:10;
+}
+.map-probe-pin:hover{transform:translate(-50%,-100%) scale(1.1)}
+.pin-body{
+  width:38px;height:38px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+  display:grid;place-items:center;border:2px solid rgba(255,255,255,0.4);
+  box-shadow:0 4px 20px rgba(0,0,0,0.5);
+}
+.pin-inner{width:14px;height:14px;border-radius:50%;background:#fff;transform:rotate(45deg)}
+.pin-stem{width:2px;height:10px;margin-top:-2px}
+.pin-label{
+  margin-top:4px;padding:2px 7px;border-radius:2px;
+  background:rgba(4,10,20,0.9);border:1px solid rgba(255,255,255,0.15);
+  font-size:.62rem;letter-spacing:.08em;color:#fff;white-space:nowrap;
+}
+.trail{
+  position:absolute;opacity:0.5;
+}
+
+.map-sidebar{
+  width:300px;flex:0 0 300px;
+  background:rgba(255,255,255,0.9);
+  border-left:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+  backdrop-filter:blur(16px);
+}
+.map-sidebar-header{padding:16px;border-bottom:1px solid var(--border)}
+.map-sidebar-header h3{font-size:.85rem;letter-spacing:.1em;font-weight:700;color:var(--navy)}
+.map-probe-list{flex:1;overflow-y:auto;padding:10px}
+.map-probe-item{
+  padding:10px 12px;margin-bottom:6px;
+  background:rgba(11,42,74,0.03);
+  border:1px solid var(--border);border-radius:2px;cursor:pointer;
+  transition:all .2s;
+}
+.map-probe-item:hover,.map-probe-item.active{border-color:var(--border2);background:rgba(0,150,255,0.06)}
+.mpi-top{display:flex;align-items:center;justify-content:space-between}
+.mpi-name{font-size:.82rem;font-weight:700;color:var(--navy)}
+.mpi-status{font-size:.65rem;letter-spacing:.07em}
+.mpi-coords{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--muted);margin-top:5px}
+.mpi-speed{font-size:.72rem;color:var(--text);margin-top:3px}
+
+.map-zoom{
+  position:absolute;bottom:20px;right:20px;
+  display:flex;flex-direction:column;gap:2px;z-index:20;
+}
+.zoom-btn{
+  width:32px;height:32px;background:rgba(4,10,20,0.9);
+  border:1px solid var(--border2);border-radius:2px;
+  color:var(--cyan);font-size:1.1rem;cursor:pointer;
+  display:grid;place-items:center;transition:background .2s;
+}
+.zoom-btn:hover{background:rgba(0,100,255,0.2)}
+
+/* ── 3D SONDAS ─────────────────────────────────────── */
+#tab-3d{flex-direction:row;overflow:hidden}
+.view3d-main{flex:1;position:relative;overflow:hidden;background:#000}
+#scene-3d{position:absolute;inset:0;width:100%;height:100%}
+.view3d-overlay{
+  position:absolute;top:14px;left:14px;right:300px;
+  display:flex;align-items:center;justify-content:space-between;
+  pointer-events:none;
+}
+.view3d-title{
+  padding:8px 14px;
+  background:rgba(4,10,20,0.85);
+  border:1px solid var(--border);border-radius:2px;
+  font-size:.8rem;letter-spacing:.1em;color:var(--cyan);font-weight:700;
+}
+.view3d-hint{
+  padding:6px 10px;
+  background:rgba(4,10,20,0.75);
+  border:1px solid var(--border);border-radius:2px;
+  font-size:.67rem;letter-spacing:.07em;color:var(--muted);pointer-events:none;
+}
+.view3d-sensors{
+  position:absolute;bottom:14px;left:14px;right:542px;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px;pointer-events:none;
+}
+.vs-card{
+  padding:8px 10px;
+  background:rgba(4,10,20,0.88);border:1px solid var(--border2);border-radius:2px;
+  min-width:0;
+}
+.vs-lbl{font-size:.6rem;letter-spacing:.1em;color:var(--muted)}
+.vs-val{font-family:'JetBrains Mono',monospace;font-size:.92rem;font-weight:700;color:#fff;display:block;margin-top:2px;white-space:nowrap}
+
+.view3d-sidebar{
+  width:280px;flex:0 0 280px;
+  background:rgba(255,255,255,0.92);
+  border-left:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+  backdrop-filter:blur(16px);
+}
+.v3s-header{padding:14px 16px;border-bottom:1px solid var(--border)}
+.v3s-header h3{font-size:.82rem;letter-spacing:.1em;font-weight:700;color:var(--navy)}
+.v3s-list{flex:1;overflow-y:auto;padding:10px}
+.v3s-item{
+  padding:10px 12px;margin-bottom:6px;
+  background:rgba(11,42,74,0.03);border:1px solid var(--border);
+  border-radius:6px;cursor:pointer;transition:all .2s;
+}
+.v3s-item:hover,.v3s-item.selected{border-color:var(--cyan);background:rgba(0,200,255,0.06)}
+.v3s-name{font-size:.82rem;font-weight:700;color:var(--navy)}
+.v3s-type{font-size:.65rem;color:var(--muted);letter-spacing:.07em;margin-top:2px}
+.v3s-rpm{font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--cyan);margin-top:4px}
+
+/* ── HISTÓRICO ─────────────────────────────────────── */
+#tab-history{flex-direction:column;overflow:hidden}
+.hist-toolbar{
+  padding:12px 20px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;flex:0 0 auto;
+}
+.hist-filter{
+  padding:6px 12px;background:rgba(0,80,160,0.12);
+  border:1px solid var(--border);border-radius:2px;
+  color:var(--text);font-family:inherit;font-size:.78rem;cursor:pointer;
+}
+.hist-btn{
+  padding:6px 14px;background:linear-gradient(90deg,#004db3,#0077e0);
+  border:0;border-radius:2px;color:#fff;font-family:inherit;
+  font-size:.78rem;font-weight:700;letter-spacing:.06em;cursor:pointer;
+}
+.hist-btn:hover{opacity:.9}
+.hist-body{flex:1;overflow:auto;padding:16px 20px;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:auto auto;gap:14px;align-content:start}
+.hist-card{
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:8px;padding:16px;
+  box-shadow:0 14px 36px rgba(11,42,74,.08);
+  backdrop-filter:blur(14px);
+}
+.hist-card h4{font-size:.78rem;letter-spacing:.1em;color:var(--muted);margin-bottom:14px}
+.hist-card.wide{grid-column:span 2}
+.hist-card.full{grid-column:span 3}
+.chart-area{height:120px;position:relative;overflow:hidden}
+.chart-bars{display:flex;align-items:flex-end;gap:4px;height:100%;padding-top:8px}
+.cb{flex:1;border-radius:1px 1px 0 0;min-width:8px;transition:opacity .2s;position:relative}
+.cb:hover{opacity:.8}
+.cb-tip{
+  display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+  padding:3px 6px;background:rgba(4,10,20,0.95);border:1px solid var(--border2);
+  font-size:.6rem;color:#fff;white-space:nowrap;border-radius:2px;margin-bottom:4px;
+}
+.cb:hover .cb-tip{display:block}
+.chart-line-svg{width:100%;height:100%}
+
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:0}
+.stat-box{
+  padding:12px;background:rgba(11,42,74,0.035);
+  border:1px solid var(--border);border-radius:6px;
+}
+.stat-box .val{font-family:'JetBrains Mono',monospace;font-size:1.4rem;font-weight:700;color:var(--navy)}
+.stat-box .lbl{font-size:.65rem;letter-spacing:.1em;color:var(--muted);margin-top:4px}
+
+.alert-table{width:100%;border-collapse:collapse;font-size:.74rem}
+.alert-table th{text-align:left;padding:6px 8px;color:var(--muted);font-size:.65rem;letter-spacing:.1em;border-bottom:1px solid var(--border)}
+.alert-table td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,0.04)}
+.alert-table tr:hover td{background:rgba(255,255,255,0.02)}
+.sev-hi{color:var(--danger)}
+.sev-med{color:var(--warn)}
+.sev-lo{color:var(--ok)}
+
+/* REPORTS */
+#tab-reports{flex-direction:column;overflow:hidden}
+.reports-toolbar{
+  padding:12px 20px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;flex:0 0 auto;
+}
+.reports-title{font-size:.95rem;font-weight:800;letter-spacing:.1em;color:var(--navy);margin-right:auto}
+.report-action{
+  border:0;border-radius:6px;padding:8px 12px;
+  background:linear-gradient(90deg,var(--navy),var(--cyan2));color:#fff;
+  font:inherit;font-size:.76rem;font-weight:700;letter-spacing:.06em;cursor:pointer;
+}
+.report-action.excel{background:linear-gradient(90deg,#0f7a4a,#16a765)}
+.reports-grid{
+  flex:1;overflow:auto;padding:16px 20px;
+  display:grid;grid-template-columns:repeat(4,minmax(170px,1fr));gap:14px;align-content:start;
+}
+.report-card{
+  background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  padding:16px;box-shadow:0 14px 36px rgba(11,42,74,.08);backdrop-filter:blur(14px);
+}
+.report-card.large{grid-column:span 2}
+.report-card.full{grid-column:span 4}
+.report-label{font-size:.68rem;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+.report-value{font-family:'JetBrains Mono',monospace;font-size:1.7rem;font-weight:800;color:var(--navy);margin-top:6px}
+.report-sub{font-size:.72rem;color:var(--muted);margin-top:6px}
+.report-bars{height:180px;display:flex;align-items:flex-end;gap:8px;padding-top:12px}
+.report-bar{flex:1;min-width:12px;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,var(--cyan2),var(--navy));position:relative}
+.report-bar::after{content:attr(data-day);position:absolute;left:50%;bottom:-20px;transform:translateX(-50%);font-size:.62rem;color:var(--muted)}
+.report-line{height:180px;width:100%}
+.efficiency-table{width:100%;border-collapse:collapse;font-size:.78rem}
+.efficiency-table th,.efficiency-table td{padding:8px;border-bottom:1px solid rgba(11,42,74,.08);text-align:left}
+.efficiency-table th{font-size:.66rem;letter-spacing:.1em;color:var(--muted)}
+
+.map-layer-controls{
+  position:absolute;top:16px;left:16px;z-index:20;
+  display:flex;gap:8px;flex-wrap:wrap;max-width:calc(100% - 340px);
+}
+.map-layer-controls button{
+  border:1px solid rgba(11,42,74,.2);border-radius:999px;
+  background:rgba(255,255,255,.86);backdrop-filter:blur(14px);
+  color:var(--navy);font:inherit;font-size:.7rem;font-weight:700;letter-spacing:.06em;
+  padding:7px 12px;cursor:pointer;box-shadow:0 10px 24px rgba(11,42,74,.1);
+}
+.map-layer-controls button.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.route-line{
+  position:absolute;height:4px;border-radius:999px;background:linear-gradient(90deg,#fff,var(--red));
+  box-shadow:0 0 18px rgba(215,54,54,.38);opacity:.72;transform-origin:left center;
+}
+.route-line.r1{width:38%;top:34%;left:24%;transform:rotate(21deg)}
+.route-line.r2{width:26%;top:66%;left:49%;transform:rotate(-18deg)}
+.replay-head{
+  position:absolute;top:33%;left:54%;width:18px;height:18px;border-radius:50%;
+  background:var(--red);box-shadow:0 0 0 8px rgba(215,54,54,.18),0 0 24px rgba(215,54,54,.55);
+  animation:replayMove 8s ease-in-out infinite;z-index:12;
+}
+@keyframes replayMove{50%{transform:translate(110px,86px)}}
+
+.view3d-controls{
+  position:absolute;top:62px;left:14px;display:flex;gap:8px;z-index:8;
+}
+.view3d-controls button{
+  border:1px solid rgba(255,255,255,.18);border-radius:999px;
+  background:rgba(9,28,50,.72);color:#fff;font:inherit;font-size:.68rem;font-weight:700;
+  letter-spacing:.08em;padding:7px 11px;cursor:pointer;backdrop-filter:blur(12px);
+}
+.view3d-controls button.active{background:linear-gradient(90deg,var(--red),var(--red2));border-color:rgba(255,255,255,.28)}
+.view3d-ref{
+  position:absolute;right:298px;bottom:14px;width:230px;z-index:7;
+  border:1px solid rgba(255,255,255,.16);border-radius:8px;overflow:hidden;
+  background:rgba(9,28,50,.68);backdrop-filter:blur(12px);
+  box-shadow:0 18px 36px rgba(0,0,0,.24);
+}
+.view3d-ref img{width:100%;display:block;opacity:.82}
+.view3d-ref span{display:block;padding:7px 9px;font-size:.62rem;letter-spacing:.1em;color:#dbe8f5}
+
+/* ── SHARED UTILS ──────────────────────────────────── */
+.glass-panel{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:3px;
+  backdrop-filter:blur(12px);
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes rotate{to{transform:rotate(360deg)}}
+.spin{animation:rotate 2s linear infinite}
+.blink{animation:pulse 2s ease infinite}
+
+.scrollbar::-webkit-scrollbar{width:4px}
+.scrollbar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* horimeter badge */
+.horo-badge{
+  font-family:'JetBrains Mono',monospace;font-size:.7rem;
+  color:var(--cyan);letter-spacing:.06em;
+}
+@media (max-width: 980px){
+  .topbar{height:auto;min-height:60px;flex-wrap:wrap;gap:10px;padding:10px 14px}
+  .topbar-right{flex-wrap:wrap;gap:8px}
+  .nav-tabs{padding:0 10px}
+  .nav-tab{padding:0 12px;font-size:.72rem}
+  .probes-grid{grid-template-columns:1fr;padding:0 12px 14px}
+  #tab-gps,#tab-3d{flex-direction:column}
+  .map-sidebar,.view3d-sidebar{width:100%;flex:0 0 210px;border-left:0;border-top:1px solid var(--border)}
+  .map-layer-controls{max-width:calc(100% - 24px);top:10px;left:10px}
+  .view3d-overlay{right:14px;align-items:flex-start;gap:8px;flex-direction:column}
+  .view3d-sensors{right:10px;left:10px;overflow-x:auto}
+  .view3d-ref{display:none}
+  .hist-body,.reports-grid{grid-template-columns:1fr}
+  .hist-card,.hist-card.wide,.hist-card.full,.report-card,.report-card.large,.report-card.full{grid-column:span 1}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ LOGIN ══════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 80 80" role="img">
+          <path d="M10 58 L27 32 L39 48 L51 20 L70 58 Z" fill="#fff"/>
+          <path d="M15 58 L31 39 L39 51 L51 31 L65 58 Z" fill="#d73636"/>
+          <path d="M24 59 H57 M34 43 H46 M43 31 H55" stroke="#9fc3e6" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="55" cy="31" r="4" fill="#fff"/>
+        </svg>
+      </div>
+      <div class="brand">UAI<span>TELEMETRIA</span></div>
+      <div class="sub">SISTEMA DE MONITORAMENTO INDUSTRIAL</div>
+    </div>
+    <div style="text-align:center;margin-bottom:24px">
+      <span class="login-badge">Sistema operacional · Versão 4.2.1</span>
+    </div>
+    <div class="field">
+      <label>USUÁRIO</label>
+      <input type="text" id="login-user" placeholder="Insira seu usuário" autocomplete="username"/>
+    </div>
+    <div class="field">
+      <label>SENHA</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"/>
+    </div>
+    <div class="login-extra">
+      <label><input type="checkbox" id="remember-login" checked/> Lembrar senha</label>
+      <a href="#">Recuperar senha</a>
+    </div>
+    <button class="login-btn" onclick="doLogin()">ENTRAR</button>
+    <div class="login-error" id="login-error">Usuário ou senha inválidos. Tente novamente.</div>
+    <div class="future-login" aria-label="Acessos futuros">
+      <button type="button">BIOMETRIA FUTURA</button>
+      <button type="button">PIN INDUSTRIAL</button>
+    </div>
+    <div class="login-links">
+      <span>admin / uai123</span>
+      <span>SCADA EDGE</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ APP ══════════════ -->
+<div id="app">
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:20px">
+      <div class="topbar-logo">UAI<span>TELEMETRIA</span></div>
+      <div class="status-pill"><div class="dot ok"></div>Sistema Online</div>
+      <div class="status-pill"><div class="dot ok blink"></div>Live Feed</div>
+      <div class="status-pill" id="server-ping"><div class="dot ok"></div>Servidor: <span id="ping-val">24</span> ms</div>
+    </div>
+    <div class="topbar-right">
+      <div class="status-pill">Raspberry Pi: <span style="color:var(--ok)">5x Online</span></div>
+      <div class="status-pill">MQTT / WebSocket</div>
+      <div class="user-pill">
+        <div class="user-pip">AD</div>
+        <span>Admin</span>
+        <span style="color:var(--muted);font-size:.7rem">▼</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAV TABS -->
+  <nav class="nav-tabs">
+    <button class="nav-tab active" data-tab="overview">▦ PAINEL GERAL</button>
+    <button class="nav-tab" data-tab="gps">⌖ GPS / MAPA</button>
+    <button class="nav-tab" data-tab="3d">◈ SONDAS 3D</button>
+    <button class="nav-tab" data-tab="reports">▤ RELATÓRIOS</button>
+    <button class="nav-tab" data-tab="history">☰ HISTÓRICO OPERACIONAL</button>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main-content">
+
+    <!-- ── PAINEL GERAL ── -->
+    <div class="tab-view active" id="tab-overview">
+      <div style="width:100%;display:flex;flex-direction:column;overflow:hidden">
+        <div class="probes-header">
+          <div>
+            <h2>MONITORAMENTO MULTI-SONDAS</h2>
+            <small id="probe-count-label">5 equipamentos · 4 operando · 1 em manutenção</small>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <div class="status-pill"><div class="dot ok"></div>Alertas IA Ativos</div>
+            <div class="status-pill" style="font-family:'JetBrains Mono',monospace;font-size:.7rem" id="clock-display"></div>
+          </div>
+        </div>
+        <div class="probes-grid scrollbar" id="probes-grid"></div>
+      </div>
+    </div>
+
+    <!-- ── GPS ── -->
+    <div class="tab-view" id="tab-gps">
+      <div class="map-container">
+        <div class="map-bg"></div>
+        <div class="map-grid"></div>
+        <div class="map-contour"></div>
+        <div class="map-layer-controls" aria-label="Camadas do mapa">
+          <button class="active" type="button">SATÉLITE</button>
+          <button type="button">TERRENO</button>
+          <button type="button">ROTAS</button>
+          <button type="button">GEOFENCES</button>
+          <button type="button">REPLAY</button>
+        </div>
+        <div class="map-roads">
+          <div class="road h1"></div>
+          <div class="road h2"></div>
+          <div class="road v1"></div>
+          <div class="road v2"></div>
+          <div class="road diag"></div>
+        </div>
+        <div class="route-line r1"></div>
+        <div class="route-line r2"></div>
+        <div class="replay-head" title="Replay da operação"></div>
+        <div class="geofence-area gf1"></div>
+        <div class="geofence-area gf2"></div>
+        <div id="map-pins"></div>
+        <!-- zoom -->
+        <div class="map-zoom">
+          <button class="zoom-btn" onclick="mapZoom(1)">+</button>
+          <button class="zoom-btn" onclick="mapZoom(-1)">−</button>
+        </div>
+        <!-- map labels -->
+        <div style="position:absolute;top:22%;left:20%;font-size:.65rem;color:rgba(255,200,100,0.7);letter-spacing:.1em;pointer-events:none">ÁREA DE OPERAÇÃO A-17</div>
+        <div style="position:absolute;top:54%;left:52%;font-size:.65rem;color:rgba(255,200,100,0.6);letter-spacing:.1em;pointer-events:none">ZONA B-04</div>
+        <div style="position:absolute;bottom:14px;left:14px;font-size:.62rem;color:var(--muted);letter-spacing:.08em;pointer-events:none">⊙ Geofence ativa &nbsp; — &nbsp; Dados GPS em tempo real &nbsp; ± 0,4 m precisão</div>
+      </div>
+      <div class="map-sidebar">
+        <div class="map-sidebar-header">
+          <h3>LOCALIZAÇÃO DAS SONDAS</h3>
+          <div style="font-size:.65rem;color:var(--muted);margin-top:4px">Atualização a cada 2s</div>
+        </div>
+        <div class="map-probe-list scrollbar" id="map-probe-list"></div>
+      </div>
+    </div>
+
+    <!-- ── 3D ── -->
+    <div class="tab-view" id="tab-3d">
+      <div class="view3d-main">
+        <canvas id="scene-3d"></canvas>
+        <div class="view3d-overlay">
+          <div class="view3d-title" id="v3d-label">SONDA XR-900 · S01</div>
+          <div class="view3d-hint">Arraste para rotacionar · Scroll para zoom</div>
+        </div>
+        <div class="view3d-controls">
+          <button type="button" id="explode-btn" onclick="toggleExplode()">EXPLODIR COMPONENTES</button>
+          <button type="button" id="open-btn" onclick="toggleOpenPanels()">ABRIR MOTOR</button>
+          <button type="button" id="drill-btn" class="active" onclick="toggleDrill()">PERFURAÇÃO AO VIVO</button>
+        </div>
+        <div class="view3d-sensors" id="v3d-sensors"></div>
+        <div class="view3d-ref">
+          <img src="SONDA.png" alt="Referência visual da sonda e sensores atuais"/>
+          <span>REFERÊNCIA DA SONDA REAL E SENSORES ATUAIS</span>
+        </div>
+      </div>
+      <div class="view3d-sidebar">
+        <div class="v3s-header">
+          <h3>SELECIONAR SONDA</h3>
+          <div style="font-size:.65rem;color:var(--muted);margin-top:4px">Animação em tempo real</div>
+        </div>
+        <div class="v3s-list scrollbar" id="v3s-list"></div>
+      </div>
+    </div>
+
+    <!-- ── RELATÓRIOS ── -->
+    <div class="tab-view" id="tab-reports">
+      <div class="reports-toolbar">
+        <div class="reports-title">RELATÓRIOS OPERACIONAIS</div>
+        <select class="hist-filter">
+          <option>Hoje</option>
+          <option>Últimos 7 dias</option>
+          <option>Últimos 30 dias</option>
+        </select>
+        <button class="report-action" onclick="exportReport('pdf')">EXPORTAR PDF</button>
+        <button class="report-action excel" onclick="exportReport('excel')">EXPORTAR EXCEL</button>
+      </div>
+      <div class="reports-grid scrollbar" id="reports-grid"></div>
+    </div>
+
+    <!-- ── HISTÓRICO ── -->
+    <div class="tab-view" id="tab-history">
+      <div style="width:100%;display:flex;flex-direction:column;overflow:hidden">
+        <div class="hist-toolbar">
+          <select class="hist-filter" id="hist-probe-filter">
+            <option value="all">Todas as sondas</option>
+          </select>
+          <select class="hist-filter">
+            <option>Últimos 7 dias</option>
+            <option>Últimos 30 dias</option>
+            <option>Este mês</option>
+          </select>
+          <button class="hist-btn">⬇ Exportar PDF</button>
+          <button class="hist-btn" style="background:linear-gradient(90deg,#006b33,#00a050)">⬇ Exportar Excel</button>
+          <div style="margin-left:auto;font-size:.72rem;color:var(--muted)">Relatório gerado automaticamente</div>
+        </div>
+        <div class="hist-body scrollbar" id="hist-body"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ── DATA ───────────────────────────────────────────────────────
+const PROBES = [
+  {id:'S01',name:'XR-900 Alpha',type:'Rotativa Hidráulica',color:'#00c8ff',icon:'◈',
+   lat:48.2,lng:22.1,status:'operando',
+   base:{rpm:1840,pressure:286,temp:72,depth:118.6,fuel:31.4,feed:0.84,vibration:68,torque:82,airpress:74,weight:67},
+   alerts:['Vedação cilindro B: 42h','Filtro hidráulico: 76h'],horimeter:2847},
+  {id:'S02',name:'XR-750 Beta',type:'Rotativa Diesel',color:'#00e88f',icon:'◉',
+   lat:36.5,lng:58.3,status:'operando',
+   base:{rpm:1620,pressure:264,temp:68,depth:87.2,fuel:27.8,feed:0.72,vibration:54,torque:71,airpress:65,weight:58},
+   alerts:['Reaperto mastro: 104h'],horimeter:1924},
+  {id:'S03',name:'RC-500 Gamma',type:'Percussão RC',color:'#ff9a00',icon:'◇',
+   lat:61.8,lng:34.7,status:'manutencao',
+   base:{rpm:980,pressure:198,temp:58,depth:54.1,fuel:18.6,feed:0.45,vibration:32,torque:48,airpress:52,weight:40},
+   alerts:['MANUTENÇÃO ATIVA — Motor','Bomba de lama: substituir'],horimeter:3412},
+  {id:'S04',name:'XR-900 Delta',type:'Rotativa Hidráulica',color:'#a066ff',icon:'◈',
+   lat:27.4,lng:72.8,status:'operando',
+   base:{rpm:1780,pressure:278,temp:74,depth:145.3,fuel:30.2,feed:0.91,vibration:72,torque:88,airpress:79,weight:74},
+   alerts:['Análise fluido: 55h'],horimeter:988},
+  {id:'S05',name:'DD-300 Epsilon',type:'Diamante',color:'#ff3b5c',icon:'◆',
+   lat:72.6,lng:45.5,status:'operando',
+   base:{rpm:2240,pressure:312,temp:81,depth:203.8,fuel:36.4,feed:1.12,vibration:88,torque:94,airpress:88,weight:82},
+   alerts:['Temperatura elevada — monitorar','Corona: 89h'],horimeter:4201},
+];
+
+// live state
+const live = PROBES.map(p=>({...p.base}));
+
+// ── CLOCK ─────────────────────────────────────────────────────
+function updateClock(){
+  const d=new Date();
+  const pad=n=>String(n).padStart(2,'0');
+  document.getElementById('clock-display').textContent=
+    `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+setInterval(updateClock,1000);updateClock();
+
+// ── PING SIM ──────────────────────────────────────────────────
+setInterval(()=>{
+  document.getElementById('ping-val').textContent=Math.round(18+Math.random()*28);
+},3000);
+
+// ── LOGIN ─────────────────────────────────────────────────────
+window.doLogin=function(){
+  const u=document.getElementById('login-user').value;
+  const p=document.getElementById('login-pass').value;
+  if((u==='admin'&&p==='uai123')||(u!==''&&p!=='')){
+    document.getElementById('login-screen').style.display='none';
+    const app=document.getElementById('app');
+    app.style.display='flex';
+    initApp();
+  } else {
+    document.getElementById('login-error').style.display='block';
+  }
+};
+document.addEventListener('keydown',e=>{if(e.key==='Enter')window.doLogin()});
+
+// ── TELEMETRY TICK ─────────────────────────────────────────────
+function tick(t){
+  PROBES.forEach((p,i)=>{
+    const b=p.base,l=live[i];
+    l.rpm   = b.rpm   + Math.sin(t*1.7+i*1.3)*55 + (Math.random()-0.5)*20;
+    l.pressure=b.pressure+Math.cos(t*1.3+i*0.9)*8+(Math.random()-0.5)*4;
+    l.temp  = b.temp  + Math.sin(t*0.7+i*1.1)*3+(Math.random()-0.5)*1.5;
+    l.depth = b.depth + (t%20)*0.04;
+    l.fuel  = b.fuel  + Math.cos(t*0.9+i*0.7)*0.8+(Math.random()-0.5)*0.3;
+    l.feed  = b.feed  + Math.sin(t*1.2+i*0.5)*0.04+(Math.random()-0.5)*0.02;
+    l.torque= b.torque+ Math.sin(t*0.8+i*1.7)*4+(Math.random()-0.5)*2;
+    l.airpress=b.airpress+Math.cos(t*1.1+i*0.6)*3+(Math.random()-0.5)*2;
+    l.vibration=b.vibration+Math.sin(t*2+i*0.9)*5+(Math.random()-0.5)*3;
+    l.weight=b.weight +Math.cos(t*0.5+i*1.2)*4+(Math.random()-0.5)*2;
+  });
+}
+
+// ── PROBE CARDS ───────────────────────────────────────────────
+function buildProbeCards(){
+  const grid=document.getElementById('probes-grid');
+  grid.innerHTML='';
+  PROBES.forEach((p,i)=>{
+    const div=document.createElement('div');
+    div.className='probe-card'+(p.alerts.length?' alert-card':'');
+    div.id='probe-card-'+i;
+    div.innerHTML=`
+      <div class="probe-head">
+        <div class="probe-head-left">
+          <div class="probe-icon" style="background:${p.color}22;color:${p.color};border:1px solid ${p.color}44">${p.icon}</div>
+          <div>
+            <div class="probe-name">${p.name}</div>
+            <div class="probe-id">${p.id} · ${p.type}</div>
+          </div>
+        </div>
+        <div class="probe-status ${p.status}">${p.status.toUpperCase()}</div>
+      </div>
+      <div class="probe-metrics" id="pm-${i}">
+        <div class="pm"><span class="pm-val" id="pv-rpm-${i}">-</span><span class="pm-lbl">RPM</span></div>
+        <div class="pm"><span class="pm-val" id="pv-pres-${i}">-</span><span class="pm-lbl">BAR</span></div>
+        <div class="pm"><span class="pm-val" id="pv-temp-${i}">-</span><span class="pm-lbl">°C</span></div>
+        <div class="pm"><span class="pm-val" id="pv-dep-${i}">-</span><span class="pm-lbl">M PROF.</span></div>
+      </div>
+      <div class="probe-bars">
+        <div class="pbar"><div class="pbar-fill" id="pb-torq-${i}" style="background:${p.color}"></div><span class="pbar-lbl">TORQUE</span><span class="pbar-val" id="pv-torq-${i}">-</span></div>
+        <div class="pbar"><div class="pbar-fill" id="pb-air-${i}" style="background:#35d8ff"></div><span class="pbar-lbl">AR COMP.</span><span class="pbar-val" id="pv-air-${i}">-</span></div>
+        <div class="pbar"><div class="pbar-fill" id="pb-vib-${i}" style="background:#ff9a00"></div><span class="pbar-lbl">VIBRAÇÃO</span><span class="pbar-val" id="pv-vib-${i}">-</span></div>
+      </div>
+      <div class="probe-footer">
+        <span class="horo-badge">⏱ ${p.horimeter.toLocaleString('pt-BR')} h</span>
+        ${p.alerts.length?`<span class="probe-alert">${p.alerts[0]}</span>`:'<span style="color:var(--ok);font-size:.68rem">✓ Sem alertas</span>'}
+      </div>`;
+    grid.appendChild(div);
+  });
+}
+
+function updateProbeCards(){
+  PROBES.forEach((p,i)=>{
+    const l=live[i];
+    const el=id=>document.getElementById(id);
+    el(`pv-rpm-${i}`).textContent=Math.round(l.rpm).toLocaleString('pt-BR');
+    el(`pv-pres-${i}`).textContent=Math.round(l.pressure);
+    el(`pv-temp-${i}`).textContent=Math.round(l.temp);
+    el(`pv-dep-${i}`).textContent=l.depth.toFixed(1);
+    el(`pb-torq-${i}`).style.width=Math.min(100,l.torque)+'%';
+    el(`pv-torq-${i}`).textContent=Math.round(l.torque)+'%';
+    el(`pb-air-${i}`).style.width=Math.min(100,l.airpress)+'%';
+    el(`pv-air-${i}`).textContent=Math.round(l.airpress)+'%';
+    el(`pb-vib-${i}`).style.width=Math.min(100,l.vibration)+'%';
+    el(`pv-vib-${i}`).textContent=Math.round(l.vibration)+'%';
+  });
+}
+
+// ── GPS MAP PINS ───────────────────────────────────────────────
+function buildMapPins(){
+  const container=document.getElementById('map-pins');
+  container.innerHTML='';
+  const list=document.getElementById('map-probe-list');
+  list.innerHTML='';
+  PROBES.forEach((p,i)=>{
+    // Map pin
+    const pin=document.createElement('div');
+    pin.className='map-probe-pin';
+    pin.id='map-pin-'+i;
+    pin.style.left=(p.lng*0.72+2)+'%';
+    pin.style.top=(p.lat*0.62+4)+'%';
+    pin.innerHTML=`
+      <div class="pin-body" style="background:${p.color}22;border-color:${p.color}88;box-shadow:0 0 20px ${p.color}44">
+        <div class="pin-inner" style="background:${p.color}"></div>
+      </div>
+      <div class="pin-stem" style="background:${p.color}"></div>
+      <div class="pin-label" style="border-color:${p.color}44;color:${p.color}">${p.id}</div>`;
+    container.appendChild(pin);
+
+    // Sidebar list
+    const item=document.createElement('div');
+    item.className='map-probe-item';
+    item.id='mpi-'+i;
+    item.innerHTML=`
+      <div class="mpi-top">
+        <span class="mpi-name" style="color:${p.color}">${p.name}</span>
+        <span class="mpi-status" style="color:${p.status==='operando'?'var(--ok)':p.status==='manutencao'?'var(--warn)':'var(--muted)'}">${p.status.toUpperCase()}</span>
+      </div>
+      <div class="mpi-coords" id="mpi-coord-${i}">Lat ${p.lat.toFixed(4)}° · Lng ${p.lng.toFixed(4)}°</div>
+      <div class="mpi-speed" id="mpi-speed-${i}">↗ 3.8 km/h · NE 042°</div>`;
+    list.appendChild(item);
+  });
+}
+
+function updateMapPins(t){
+  PROBES.forEach((p,i)=>{
+    const dx=Math.sin(t*0.3+i*1.2)*0.8;
+    const dy=Math.cos(t*0.25+i*0.9)*0.5;
+    const pin=document.getElementById('map-pin-'+i);
+    if(pin){
+      pin.style.left=((p.lng+dx)*0.72+2)+'%';
+      pin.style.top=((p.lat+dy)*0.62+4)+'%';
+    }
+    const spd=document.getElementById('mpi-speed-'+i);
+    if(spd) spd.textContent=`↗ ${(2+Math.random()*4).toFixed(1)} km/h · NE ${Math.round(30+Math.random()*40)}°`;
+  });
+}
+
+// ── 3D ENGINE ──────────────────────────────────────────────────
+let renderer3d, camera3d, scene3d, clock3d;
+let currentProbeIdx=0;
+let isDragging=false,prevMouse={x:0,y:0};
+let camTheta=0.6,camPhi=0.48,camRadius=18;
+let rigGroup=null, drillMesh=null, engineCover=null;
+let isExploded=false, panelsOpen=false, drillingActive=true;
+
+function noiseTexture(base,accent){
+  const c=document.createElement('canvas');c.width=c.height=256;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle=base;ctx.fillRect(0,0,256,256);
+  for(let i=0;i<6000;i++){
+    ctx.fillStyle=i%9===0?`rgba(${accent},${Math.random()*.22})`:`rgba(255,255,255,${Math.random()*.12})`;
+    ctx.fillRect(Math.random()*256,Math.random()*256,Math.random()*3+.4,Math.random()*3+.4);
+  }
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(3,3);return t;
+}
+
+function init3D(){
+  const canvas=document.getElementById('scene-3d');
+  const w=canvas.parentElement.clientWidth, h=canvas.parentElement.clientHeight;
+  renderer3d=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+  renderer3d.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer3d.setSize(w,h);
+  renderer3d.shadowMap.enabled=true;
+  renderer3d.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer3d.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer3d.toneMappingExposure=1.1;
+
+  scene3d=new THREE.Scene();
+  scene3d.fog=new THREE.FogExp2(0x070910,0.022);
+  scene3d.background=new THREE.Color(0x070910);
+
+  camera3d=new THREE.PerspectiveCamera(42,w/h,0.1,160);
+  updateCamera();
+
+  clock3d=new THREE.Clock();
+  buildRig();
+  buildScene3D();
+  addLights();
+  build3DSidebar();
+  buildSensorHUD();
+  animate3d();
+
+  // controls
+  canvas.addEventListener('mousedown',e=>{isDragging=true;prevMouse={x:e.clientX,y:e.clientY}});
+  canvas.addEventListener('mouseup',()=>isDragging=false);
+  canvas.addEventListener('mousemove',e=>{
+    if(!isDragging)return;
+    const dx=e.clientX-prevMouse.x, dy=e.clientY-prevMouse.y;
+    camTheta-=dx*0.007;camPhi=Math.max(0.1,Math.min(1.4,camPhi+dy*0.006));
+    prevMouse={x:e.clientX,y:e.clientY};updateCamera();
+  });
+  canvas.addEventListener('wheel',e=>{
+    camRadius=Math.max(5,Math.min(30,camRadius+e.deltaY*0.02));
+    updateCamera();e.preventDefault();
+  },{passive:false});
+
+  window.addEventListener('resize',()=>{
+    const w2=canvas.parentElement.clientWidth,h2=canvas.parentElement.clientHeight;
+    camera3d.aspect=w2/h2;camera3d.updateProjectionMatrix();
+    renderer3d.setSize(w2,h2);
+  });
+}
+
+function updateCamera(){
+  if(!camera3d)return;
+  const x=camRadius*Math.sin(camTheta)*Math.cos(camPhi);
+  const y=camRadius*Math.sin(camPhi);
+  const z=camRadius*Math.cos(camTheta)*Math.cos(camPhi);
+  camera3d.position.set(x+0.4,y+1,z);
+  camera3d.lookAt(0.4,2.4,0);
+}
+
+function buildRig(){
+  if(rigGroup){scene3d.remove(rigGroup);}
+  rigGroup=new THREE.Group();
+  scene3d.add(rigGroup);
+
+  const steelMap=noiseTexture('#6f7775','120,92,57');
+  const paintMap=noiseTexture('#c78924','20,20,18');
+  const rubberMap=noiseTexture('#101313','80,80,74');
+  const dirtMap=noiseTexture('#3a3025','155,115,69');
+
+  const probeColor=PROBES[currentProbeIdx].color;
+  const paintHex=parseInt(probeColor.replace('#',''),16);
+
+  const mSteel=new THREE.MeshStandardMaterial({color:0x858f8d,metalness:.86,roughness:.33,map:steelMap});
+  const mDark=new THREE.MeshStandardMaterial({color:0x1f2424,metalness:.78,roughness:.42,map:steelMap});
+  const mPaint=new THREE.MeshStandardMaterial({color:paintHex,metalness:.45,roughness:.58,map:paintMap});
+  const mRubber=new THREE.MeshStandardMaterial({color:0x090b0b,metalness:.05,roughness:.76,map:rubberMap});
+  const mHyd=new THREE.MeshStandardMaterial({color:0xd7dde0,metalness:.96,roughness:.18});
+  const mDirt=new THREE.MeshStandardMaterial({color:0x5b4933,roughness:.92,map:dirtMap});
+  const mGlass=new THREE.MeshPhysicalMaterial({color:0x183747,metalness:.1,roughness:.08,transparent:true,opacity:.58});
+
+  const add=(geo,mat,pos,rot=[0,0,0],par=rigGroup)=>{
+    const m=new THREE.Mesh(geo,mat);
+    m.position.set(...pos);m.rotation.set(...rot);
+    m.castShadow=m.receiveShadow=true;par.add(m);return m;
+  };
+  const box=(w,h,d,mat,pos,rot,par)=>add(new THREE.BoxGeometry(w,h,d,4,3,4),mat,pos,rot||[0,0,0],par||rigGroup);
+  const cyl=(r,h,mat,pos,rot,seg=28,par=rigGroup)=>add(new THREE.CylinderGeometry(r,r,h,seg),mat,pos,rot||[0,0,0],seg,par);
+
+  // tracks
+  [-1.05,1.05].forEach(x=>{
+    const g=new THREE.Group();g.position.set(x,.44,0);rigGroup.add(g);
+    box(1.05,.56,4.55,mRubber,[0,0,0],[0,0,0],g);
+    for(let i=0;i<24;i++){const z=-2.18+i*.19;box(1.17,.11,.1,mDark,[0,.34,z],[0,0,0],g);box(1.17,.1,.09,mDark,[0,-.34,z],[0,0,0],g);}
+    [-1.75,0,1.75].forEach(z=>{
+      add(new THREE.CylinderGeometry(.34,.34,1.2,36),mSteel,[0,0,z],[0,0,Math.PI/2],g);
+      add(new THREE.CylinderGeometry(.18,.18,1.26,24),mDark,[0,0,z],[0,0,Math.PI/2],g);
+    });
+  });
+
+  box(3.2,.52,4.2,mDark,[0,.92,0]);
+  box(2.75,1.15,2.9,mPaint,[-.25,1.62,-.2]);
+  box(1.25,1,1.25,mGlass,[-.92,2.06,1.05]);
+  engineCover=box(.9,.7,1.15,mDark,[1.1,1.85,1.08]);
+  box(.28,1,2.6,mSteel,[1.55,1.78,-.12]);
+
+  const mast=new THREE.Group();
+  mast.position.set(2.08,2.05,-1);mast.rotation.z=-.16;rigGroup.add(mast);
+  box(.42,5.2,.32,mPaint,[0,2.15,0],[0,0,0],mast);
+  box(.16,5.35,.16,mSteel,[-.32,2.15,-.26],[0,0,0],mast);
+  box(.16,5.35,.16,mSteel,[.32,2.15,-.26],[0,0,0],mast);
+  for(let y=-.2;y<4.8;y+=.43) box(.96,.055,.18,mDark,[0,y,-.28],[0,0,y%.8?.12:-.12],mast);
+
+  drillMesh=add(new THREE.CylinderGeometry(.11,.11,4.9,28),mHyd,[0,1.52,-.55],[0,0,0],mast);
+  for(let y=-.86;y<3.8;y+=.28) add(new THREE.CylinderGeometry(.15,.15,.18,6),mDark,[0,y,-.55],[0,0,0],mast);
+  add(new THREE.CylinderGeometry(.22,.22,.58,28),mHyd,[0,-1.15,-.55],[0,0,0],mast);
+
+  // hydraulics
+  [[-.1,1.45,.52],[1.72,2.78,.18],[.88,1.28,-.6],[2.12,3.12,-.82],[-1.12,1.8,-1],[.86,2.55,-.3]].reduce((acc,v,i,a)=>{
+    if(i%2===0){const s=new THREE.Vector3(...v),e=new THREE.Vector3(...a[i+1]);
+      const mid=s.clone().add(e).multiplyScalar(.5);const dir=e.clone().sub(s);
+      const g=new THREE.Group();g.position.copy(mid);
+      g.quaternion.copy(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),dir.clone().normalize()));
+      rigGroup.add(g);
+      add(new THREE.CylinderGeometry(.1,.1,dir.length()*.56,24),mDark,[0,-dir.length()*.11,0],[0,0,0],g);
+      add(new THREE.CylinderGeometry(.055,.055,dir.length()*.74,24),mHyd,[0,dir.length()*.12,0],[0,0,0],g);
+    }return acc;
+  },[]);
+
+  // hoses
+  [[[-.8,2.1,-1.1],[.2,3,-1.7],[1.9,3.8,-1.45],[2.25,5,-1.45],.035,mDark],
+   [[-.25,1.82,1.25],[.85,2.65,1.05],[2.05,3.05,.2],.042,mRubber],
+   [[1.15,1.7,-.5],[2.4,2.2,-.8],[2.18,3.9,-1.15],.032,mRubber]].forEach(h=>{
+    const pts=h.slice(0,-2).map(p=>new THREE.Vector3(...p));
+    const curve=new THREE.CatmullRomCurve3(pts);
+    const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,64,.036,8,false),h[h.length-1]);
+    mesh.castShadow=true;rigGroup.add(mesh);
+  });
+
+  // dirt
+  for(let i=0;i<80;i++) add(new THREE.SphereGeometry(THREE.MathUtils.randFloat(.025,.09),6,4),mDirt,
+    [THREE.MathUtils.randFloatSpread(4.5),THREE.MathUtils.randFloat(.55,2.35),THREE.MathUtils.randFloatSpread(4.9)],[0,0,0],rigGroup);
+
+  rigGroup.traverse(obj=>{
+    if(!obj.isMesh || obj.userData.origin)return;
+    obj.userData.origin=obj.position.clone();
+    const dir=obj.position.clone();
+    if(dir.length()<0.01) dir.set(Math.random()-.5,.2,Math.random()-.5);
+    obj.userData.explodeDir=dir.normalize().multiplyScalar(.55+Math.random()*.55);
+  });
+}
+
+function buildScene3D(){
+  // ground
+  const dirtMap=noiseTexture('#3a3025','155,115,69');
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(80,80,60,60),
+    new THREE.MeshStandardMaterial({color:0x2d271e,roughness:.96,map:dirtMap}));
+  ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene3d.add(ground);
+  // rocks
+  for(let i=0;i<80;i++){
+    const r=new THREE.Mesh(new THREE.DodecahedronGeometry(THREE.MathUtils.randFloat(.05,.2),0),
+      new THREE.MeshStandardMaterial({color:0x5b4933,roughness:.92}));
+    r.position.set(THREE.MathUtils.randFloatSpread(22),.04,THREE.MathUtils.randFloatSpread(18));
+    r.rotation.set(Math.random()*Math.PI,Math.random()*Math.PI,Math.random()*Math.PI);
+    r.scale.y=THREE.MathUtils.randFloat(.25,.85);r.castShadow=r.receiveShadow=true;scene3d.add(r);
+  }
+}
+
+function addLights(){
+  scene3d.add(new THREE.HemisphereLight(0x8fdfff,0x2d1a0d,1.5));
+  const key=new THREE.DirectionalLight(0xffffff,4.2);
+  key.position.set(4.5,8,6);key.castShadow=true;key.shadow.mapSize.set(1024,1024);scene3d.add(key);
+  const rimB=new THREE.PointLight(0x35d8ff,7,18);rimB.position.set(-4,3.8,3.8);scene3d.add(rimB);
+  const rimO=new THREE.PointLight(0xff8f2b,8,13);rimO.position.set(4.2,2.3,-3.3);scene3d.add(rimO);
+}
+
+function build3DSidebar(){
+  const list=document.getElementById('v3s-list');list.innerHTML='';
+  PROBES.forEach((p,i)=>{
+    const div=document.createElement('div');
+    div.className='v3s-item'+(i===0?' selected':'');
+    div.id='v3s-item-'+i;
+    div.innerHTML=`
+      <div class="v3s-name" style="color:${p.color}">${p.name}</div>
+      <div class="v3s-type">${p.id} · ${p.type}</div>
+      <div class="v3s-rpm" id="v3s-rpm-${i}">⊙ ${Math.round(p.base.rpm)} RPM</div>`;
+    div.onclick=()=>{
+      document.querySelectorAll('.v3s-item').forEach(x=>x.classList.remove('selected'));
+      div.classList.add('selected');currentProbeIdx=i;buildRig();
+      document.getElementById('v3d-label').textContent=`${p.name} · ${p.id}`;
+      buildSensorHUD();
+    };
+    list.appendChild(div);
+  });
+}
+
+function buildSensorHUD(){
+  const p=PROBES[currentProbeIdx];
+  const sensors=document.getElementById('v3d-sensors');
+  sensors.innerHTML=`
+    <div class="vs-card"><div class="vs-lbl">RPM MOTOR</div><span class="vs-val" id="vs-rpm">-</span></div>
+    <div class="vs-card"><div class="vs-lbl">PRESSÃO HID.</div><span class="vs-val" id="vs-pres">-</span></div>
+    <div class="vs-card"><div class="vs-lbl">TEMP. ÓLEO</div><span class="vs-val" id="vs-temp">-</span></div>
+    <div class="vs-card"><div class="vs-lbl">TEMP. MOTOR</div><span class="vs-val" id="vs-motor-temp">-</span></div>
+    <div class="vs-card"><div class="vs-lbl">CONSUMO</div><span class="vs-val" id="vs-fuel">-</span></div>
+    <div class="vs-card"><div class="vs-lbl">HORÍMETRO</div><span class="vs-val" id="vs-hours">${p.horimeter.toLocaleString('pt-BR')} h</span></div>
+    <div class="vs-card"><div class="vs-lbl">VEL. PERF.</div><span class="vs-val" id="vs-feed">-</span></div>
+    <div class="vs-card"><div class="vs-lbl">PROFUNDIDADE</div><span class="vs-val" id="vs-dep">-</span></div>
+    <div class="vs-card"><div class="vs-lbl">INCLINAÇÃO</div><span class="vs-val" id="vs-angle">-</span></div>
+    <div class="vs-card"><div class="vs-lbl">VIBRAÇÃO</div><span class="vs-val" id="vs-vibration">-</span></div>
+    <div class="vs-card"><div class="vs-lbl">TORQUE</div><span class="vs-val" id="vs-torque">-</span></div>
+    <div class="vs-card"><div class="vs-lbl">STATUS</div><span class="vs-val" id="vs-status">${p.status.toUpperCase()}</span></div>
+    <div class="vs-card"><div class="vs-lbl">ALARMES</div><span class="vs-val" id="vs-alarms">${p.alerts.length}</span></div>
+    <div class="vs-card"><div class="vs-lbl">DIESEL</div><span class="vs-val" id="vs-diesel">-</span></div>
+    <div class="vs-card"><div class="vs-lbl">COMPRESSOR</div><span class="vs-val" id="vs-compressor">-</span></div>
+    <div class="vs-card"><div class="vs-lbl">GPS</div><span class="vs-val" id="vs-gps">${p.lat.toFixed(2)}, ${p.lng.toFixed(2)}</span></div>`;
+}
+
+function updateSensorHUD(){
+  const l=live[currentProbeIdx];
+  const el=id=>document.getElementById(id);
+  if(el('vs-rpm')) el('vs-rpm').textContent=Math.round(l.rpm).toLocaleString('pt-BR');
+  if(el('vs-pres')) el('vs-pres').textContent=Math.round(l.pressure)+' bar';
+  if(el('vs-temp')) el('vs-temp').textContent=Math.round(l.temp)+' °C';
+  if(el('vs-motor-temp')) el('vs-motor-temp').textContent=Math.round(l.temp+8)+' °C';
+  if(el('vs-dep')) el('vs-dep').textContent=l.depth.toFixed(1)+' m';
+  if(el('vs-fuel')) el('vs-fuel').textContent=l.fuel.toFixed(1)+' L/h';
+  if(el('vs-feed')) el('vs-feed').textContent=l.feed.toFixed(2)+' m/min';
+  if(el('vs-angle')) el('vs-angle').textContent=(12+Math.sin(appTime*.8)*2).toFixed(1)+'°';
+  if(el('vs-vibration')) el('vs-vibration').textContent=Math.round(l.vibration)+'%';
+  if(el('vs-torque')) el('vs-torque').textContent=Math.round(l.torque)+'%';
+  if(el('vs-diesel')) el('vs-diesel').textContent=Math.round(100-(l.fuel*1.8))+'%';
+  if(el('vs-compressor')) el('vs-compressor').textContent=Math.round(l.airpress)+'%';
+  // sidebar RPM
+  PROBES.forEach((p,i)=>{
+    const el2=document.getElementById('v3s-rpm-'+i);
+    if(el2) el2.textContent=`⊙ ${Math.round(live[i].rpm)} RPM`;
+  });
+}
+
+function animate3d(){
+  if(!renderer3d)return;
+  requestAnimationFrame(animate3d);
+  const t=clock3d.getElapsedTime();
+  if(drillMesh && drillingActive) drillMesh.rotation.y+=0.12;
+  if(rigGroup){
+    rigGroup.rotation.y=Math.sin(t*.12)*.04-.1;
+    rigGroup.position.y=drillingActive?Math.sin(t*12)*.01:0;
+    rigGroup.traverse(obj=>{
+      if(!obj.isMesh || !obj.userData.origin)return;
+      const target=obj.userData.origin.clone();
+      if(isExploded) target.add(obj.userData.explodeDir);
+      if(obj===engineCover && panelsOpen) target.add(new THREE.Vector3(.8,.36,.24));
+      obj.position.lerp(target,.09);
+    });
+  }
+  renderer3d.render(scene3d,camera3d);
+}
+
+window.toggleExplode=function(){
+  isExploded=!isExploded;
+  document.getElementById('explode-btn')?.classList.toggle('active',isExploded);
+};
+window.toggleOpenPanels=function(){
+  panelsOpen=!panelsOpen;
+  document.getElementById('open-btn')?.classList.toggle('active',panelsOpen);
+};
+window.toggleDrill=function(){
+  drillingActive=!drillingActive;
+  document.getElementById('drill-btn')?.classList.toggle('active',drillingActive);
+};
+
+// ── HISTORY ───────────────────────────────────────────────────
+function buildHistory(){
+  // populate filter
+  const sel=document.getElementById('hist-probe-filter');
+  PROBES.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.name;sel.appendChild(o);});
+
+  const body=document.getElementById('hist-body');
+  // Daily production chart
+  const days=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  const barData=days.map(()=>Math.round(20+Math.random()*60));
+  const maxB=Math.max(...barData);
+  const barsHtml=barData.map((v,i)=>`<div class="cb" style="height:${(v/maxB*90)}%;background:linear-gradient(180deg,var(--cyan),var(--blue));opacity:0.85">
+    <div class="cb-tip">${days[i]}: ${v} m perf.</div></div>`).join('');
+
+  // Line chart SVG
+  const lineVals=[68,72,65,80,74,88,82,79,90,85,78,92];
+  const svgPts=lineVals.map((v,i)=>`${(i/(lineVals.length-1))*100}%,${100-v}%`).join(' ');
+  const svgFill=lineVals.map((v,i)=>`${(i/(lineVals.length-1))*100}%,${100-v}%`).join(' ')
+    +` 100%,100% 0%,100%`;
+
+  body.innerHTML=`
+    <div class="hist-card">
+      <h4>PRODUÇÃO DIÁRIA (metros perfurados)</h4>
+      <div class="chart-area"><div class="chart-bars">${barsHtml}</div></div>
+    </div>
+    <div class="hist-card">
+      <h4>EFICIÊNCIA OPERACIONAL (%)</h4>
+      <div class="chart-area">
+        <svg class="chart-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <defs><linearGradient id="lg1" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--cyan)" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="var(--cyan)" stop-opacity="0"/>
+          </linearGradient></defs>
+          <polygon points="${svgFill}" fill="url(#lg1)"/>
+          <polyline points="${svgPts}" fill="none" stroke="var(--cyan)" stroke-width="2" vector-effect="non-scaling-stroke"/>
+        </svg>
+      </div>
+    </div>
+    <div class="hist-card">
+      <h4>RESUMO DO PERÍODO</h4>
+      <div class="stats-grid">
+        <div class="stat-box"><div class="val">847 m</div><div class="lbl">TOTAL PERFURADO</div></div>
+        <div class="stat-box"><div class="val">94.2%</div><div class="lbl">DISPONIBILIDADE</div></div>
+        <div class="stat-box"><div class="val">2.4 h</div><div class="lbl">TEMPO PARADO</div></div>
+        <div class="stat-box"><div class="val">218 L</div><div class="lbl">CONSUMO DIESEL</div></div>
+      </div>
+    </div>
+    <div class="hist-card wide">
+      <h4>ALERTAS E EVENTOS ANTERIORES</h4>
+      <table class="alert-table">
+        <thead><tr><th>DATA/HORA</th><th>SONDA</th><th>EVENTO</th><th>SEVERIDADE</th><th>DURAÇÃO</th></tr></thead>
+        <tbody>
+          ${[
+            ['23/05 14:32','XR-900 Alpha','Pressão hidráulica elevada','MÉDIA','12 min'],
+            ['22/05 09:15','DD-300 Epsilon','Temperatura motor > 85°C','ALTA','8 min'],
+            ['21/05 17:48','RC-500 Gamma','Parada para manutenção','ALTA','4h 20min'],
+            ['20/05 11:22','XR-750 Beta','Alerta vibração anormal','BAIXA','3 min'],
+            ['19/05 08:05','XR-900 Delta','Nível combustível baixo','MÉDIA','45 min'],
+            ['18/05 15:30','XR-900 Alpha','Filtro ar — troca realizada','BAIXA','25 min'],
+          ].map(([dt,sonda,ev,sev,dur])=>`<tr>
+            <td style="font-family:'JetBrains Mono',monospace;font-size:.7rem">${dt}</td>
+            <td>${sonda}</td><td>${ev}</td>
+            <td class="sev-${sev==='ALTA'?'hi':sev==='MÉDIA'?'med':'lo'}">${sev}</td>
+            <td>${dur}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="hist-card">
+      <h4>HORÍMETRO POR SONDA</h4>
+      <div style="display:grid;gap:8px;margin-top:4px">
+        ${PROBES.map(p=>`
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:10px;height:10px;border-radius:50%;background:${p.color};flex:0 0 10px"></div>
+            <div style="flex:1;font-size:.74rem;color:var(--text)">${p.id}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:.74rem;color:${p.color}">${p.horimeter.toLocaleString('pt-BR')} h</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+// ── REPORTS ───────────────────────────────────────────────────
+function buildReports(){
+  const grid=document.getElementById('reports-grid');
+  if(!grid)return;
+  const daily=[72,88,64,96,112,84,126];
+  const days=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  const max=Math.max(...daily);
+  const bars=daily.map((v,i)=>`<div class="report-bar" data-day="${days[i]}" style="height:${(v/max)*92}%"></div>`).join('');
+  const eff=[78,82,81,87,84,91,89,93,88,94,92,95];
+  const pts=eff.map((v,i)=>`${(i/(eff.length-1))*100},${100-v}`).join(' ');
+  const fill=eff.map((v,i)=>`${(i/(eff.length-1))*100},${100-v}`).join(' ')+' 100,100 0,100';
+  grid.innerHTML=`
+    <div class="report-card"><div class="report-label">Produção diária</div><div class="report-value">126 m</div><div class="report-sub">Melhor sonda: DD-300 Epsilon</div></div>
+    <div class="report-card"><div class="report-label">Horas trabalhadas</div><div class="report-value">41.8 h</div><div class="report-sub">5 sondas simultâneas</div></div>
+    <div class="report-card"><div class="report-label">Tempo parado</div><div class="report-value">2.4 h</div><div class="report-sub">-18% vs. ontem</div></div>
+    <div class="report-card"><div class="report-label">Alarmes</div><div class="report-value">7</div><div class="report-sub">3 críticos em análise</div></div>
+    <div class="report-card"><div class="report-label">Temperatura máxima</div><div class="report-value">89 °C</div><div class="report-sub">Motor hidráulico S05</div></div>
+    <div class="report-card"><div class="report-label">RPM médio</div><div class="report-value">1.692</div><div class="report-sub">Faixa nominal</div></div>
+    <div class="report-card"><div class="report-label">Eficiência operacional</div><div class="report-value">92.4%</div><div class="report-sub">+4.1% na semana</div></div>
+    <div class="report-card"><div class="report-label">Consumo combustível</div><div class="report-value">218 L</div><div class="report-sub">5.2 L por metro</div></div>
+    <div class="report-card large"><div class="report-label">Produção por dia</div><div class="report-bars">${bars}</div></div>
+    <div class="report-card large"><div class="report-label">Eficiência em tempo real</div>
+      <svg class="report-line" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <defs><linearGradient id="reportFill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#1c75bc" stop-opacity=".28"/><stop offset="1" stop-color="#1c75bc" stop-opacity="0"/></linearGradient></defs>
+        <polygon points="${fill}" fill="url(#reportFill)"></polygon>
+        <polyline points="${pts}" fill="none" stroke="var(--red)" stroke-width="2.4" vector-effect="non-scaling-stroke"></polyline>
+      </svg>
+    </div>
+    <div class="report-card full"><div class="report-label">Ranking de sondas e indicadores</div>
+      <table class="efficiency-table">
+        <thead><tr><th>Sonda</th><th>Produção</th><th>RPM médio</th><th>Temp. máx.</th><th>Consumo</th><th>Disponibilidade</th></tr></thead>
+        <tbody>
+          ${PROBES.map((p,i)=>`<tr><td style="color:${p.color};font-weight:700">${p.id} - ${p.name}</td><td>${(70+i*18).toFixed(0)} m</td><td>${Math.round(p.base.rpm*.92)}</td><td>${Math.round(p.base.temp+9)} °C</td><td>${Math.round(p.base.fuel*7.2)} L</td><td>${(91+i*.8).toFixed(1)}%</td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+window.exportReport=function(type){
+  const label=type==='excel'?'Excel':'PDF';
+  alert(`Exportação ${label} simulada: relatório pronto para integração com backend.`);
+};
+
+// ── MAIN LOOP ──────────────────────────────────────────────────
+let appTime=0;
+function appLoop(){
+  appTime+=0.016;
+  tick(appTime);
+  updateProbeCards();
+  updateMapPins(appTime);
+  if(document.getElementById('tab-3d').classList.contains('active')) updateSensorHUD();
+  requestAnimationFrame(appLoop);
+}
+
+// ── NAV TABS ──────────────────────────────────────────────────
+document.querySelectorAll('.nav-tab').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.nav-tab,.tab-view').forEach(el=>el.classList.remove('active'));
+    btn.classList.add('active');
+    const view=document.getElementById('tab-'+btn.dataset.tab);
+    if(view) view.classList.add('active');
+    if(btn.dataset.tab==='3d'&&!renderer3d) init3D();
+  });
+});
+
+document.querySelectorAll('.map-layer-controls button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.map-layer-controls button').forEach(x=>x.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+// ── INIT ──────────────────────────────────────────────────────
+function initApp(){
+  buildProbeCards();
+  buildMapPins();
+  buildHistory();
+  buildReports();
+  appLoop();
+}
+
+window.mapZoom=function(dir){
+  // visual-only zoom effect
+  const grid=document.querySelector('.map-grid');
+  let sz=parseInt(getComputedStyle(grid).backgroundSize)||60;
+  sz=Math.max(20,Math.min(200,sz+dir*15));
+  grid.style.backgroundSize=`${sz}px ${sz}px`;
+};
+</script>
+</body>
+</html>
